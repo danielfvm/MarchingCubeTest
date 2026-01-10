@@ -34,7 +34,7 @@ Shader "GenerateMesh/Write Active Texels"
                 uint2 dim;
                 _DataTex.GetDimensions(dim.x, dim.y);
 
-				return any(_DataTex[IN.uv * dim].rgb > 0) ? 1.0 : 0.0;
+				return any(_DataTex[IN.uv * dim] > 0) ? 1.0 : 0.0;
 			}
 
             ENDCG

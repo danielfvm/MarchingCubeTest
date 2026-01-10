@@ -65,35 +65,8 @@ Shader "GenerateMesh/Compact Texels"
 				return uv.x + uv.y * WIDTH;
 			}
 
-			float4 PackUIntToFloat4(uint value)
-			{
-				float4 result;
-
-				result.r = (value & 0xFF) / 255.0;         // lowest byte
-				result.g = ((value >> 8) & 0xFF) / 255.0;  // 2nd byte
-				result.b = ((value >> 16) & 0xFF) / 255.0; // 3rd byte
-				result.a = 1.0; // highest byte
-
-				return result;
-			}
-
-			uint UnpackFloat4ToUInt(float4 packed)
-			{
-				uint r = (uint)(packed.x * 255.0 + 0.); // add 0.5 for proper rounding
-				uint g = (uint)(packed.y * 255.0 + 0.);
-				uint b = (uint)(packed.z * 255.0 + 0.);
-
-				return r | (g << 8) | (b << 16);
-			}
-
 			inline float CountActiveTexels(int3 uv, int2 offset)
 			{
-				/*float mipSize = 1.0 / (1 << uv.z);
-				float mipOffsetY = (uv.z == 0) ? 0.0 : (1.0 + (1.0 - mipSize * 2.0)) * 0.5;
-
-				uint2 pos = uv.xy + uint2(0, (1 - mipOffsetY) * 1024);
-
-				return UnpackFloat4ToUInt(_ActiveTexelMap.Load(uint3(pos, 0), offset));*/
 				return (float)(1 << (uv.z + uv.z)) * _ActiveTexelMap.Load(uv, offset);
 			}
 
@@ -148,14 +121,15 @@ Shader "GenerateMesh/Compact Texels"
                 //_DataTex.GetDimensions(dim.x, dim.y);
 
 				if (all(IN.uv * dim >= dim - 1)) {
-					return float4(rgb_to_srgb(PackUIntToFloat4(CountActiveTexels(int3(0, 0, round(log2(1024))), 0))), 1.0);
+					uint count = CountActiveTexels(int3(0, 0, round(log2(1024))), 0);
+					return float4(count, 0.0, 0.0, 1.0);
 				}
 
 				int2 uv = ActiveTexelIndexToUV(UVToIndex(IN.uv * dim));
 				if (uv.x == -1)
 					return 0;  
 
-				return float4(rgb_to_srgb(_DataTex[uv].rgb), 1.0);
+				return _DataTex[uv]; // float4(_DataTex[uv].rgb, 1.0);
 			}
 
             ENDCG

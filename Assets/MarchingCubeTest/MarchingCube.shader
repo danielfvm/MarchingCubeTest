@@ -43,11 +43,20 @@ Shader "GenerateMesh/MarchingCube"
 
             float2 sample(int3 pos)
             {
-                float weight = 1 - distance(pos, _VoxelAmount / 2) * (/*sin(_MyTime)*/ 0.1 * 0.1 + 0.015);
+                float weight = 1 - distance(pos, _VoxelAmount / 2) * (sin(_MyTime) * 0.1 + 0.15);
                 return float2(saturate(weight), 1);
              
                 //int index = pos.x + pos.y * _VoxelAmount + pos.z * _VoxelAmount * _VoxelAmount;
                 //return _DataTex[uint2(index % dim.x, index / dim.x)];
+            }
+
+            float3 sampleNormal(float3 pos)
+            {
+                float3 grad;
+                grad.x = sample(pos + int3(1,0,0)).r - sample(pos + int3(-1,0,0)).r;
+                grad.y = sample(pos + int3(0,1,0)).r - sample(pos + int3(0,-1,0)).r;
+                grad.z = sample(pos + int3(0,0,1)).r - sample(pos + int3(0,0,-1)).r;
+                return normalize(grad);
             }
  
             v2f vert (appdata_base v)
@@ -58,16 +67,18 @@ Shader "GenerateMesh/MarchingCube"
                 return o;
             }
 
-            // GPT claims mod bad on Quest
-            static const uint VertIndexLUT[16] = {
-                0,1,2,  // 0,1,2
-                0,1,2,  // 3,4,5
-                0,1,2,  // 6,7,8
-                0,1,2,  // 9,10,11
-                0,1,2,  // 12,13,14
-                0       // 15 (unused)
-            };
+            float4 EncodeVertex(float3 position, float3 normal)
+            {
+                uint3 qp = uint3(saturate(position) * 255.0 + 0.5);
+                uint3 qn = uint3((normalize(normal) * 0.5 + 0.5) * 255.0 + 0.5);
 
+                return float4(  
+                    (qp.x | (qp.y << 8)) / float(0xFFFF), 
+                    (qp.z | (qn.x << 8)) / float(0xFFFF), 
+                    (qn.y | (qn.z << 8)) / float(0xFFFF), 
+                    1.0 
+                );
+            }
 
 			float4 frag (v2f IN) : SV_Target
             {
@@ -78,7 +89,7 @@ Shader "GenerateMesh/MarchingCube"
                 uint voxelIndex = (uv.x >> 2) + (uv.y >> 2) * (1024 >> 2);
                 uint subIndex = EncodeZOrder(uv % 4); //(uv.x % 4) + (uv.y % 4) * 4;
                 uint triIndex = subIndex / 3;
-                uint vertIndex = VertIndexLUT[subIndex]; //subIndex % 3;
+                uint vertIndex = subIndex % 3;
                 
                 // the subIndex is from 0..16 but we only need 5 Triangles * 3 Vertices = 15 Vertices
                 // per cube in total, so at least one Pixel always stays empty.
@@ -106,50 +117,42 @@ Shader "GenerateMesh/MarchingCube"
                 // Skip if the cube is entirely inside or outside the surface
                 mask *= (cubeIndex != 0 && cubeIndex != 0xFF) ? 1.0 : 0.0;
 
-                int triTableIndex = getTri(cubeIndex, triIndex * 3);// TriTable[cubeIndex][triIndex * 3];
+                int triTableIndex = getTri(cubeIndex, triIndex * 3);
                 mask *= triTableIndex != -1 ? 1.0 : 0.0;
 
-               // float3 vertices[3];
+                float3 vertices[3];
                     
                 // Loop not needed if normal is not needed
-               // [unroll] for (int i = 0; i < 3; i++)
-               // {
-                  //  triTableIndex = TriTable[cubeIndex][triIndex * 3 + i];
-                 // vertIndex ^= 1;
-                if (vertIndex == 0)
-                    vertIndex = 1;
-                else if (vertIndex == 1)
+                [unroll] for (int i = 0; i < 3; i++)
+                {
+                    triTableIndex = getTri(cubeIndex, triIndex * 3 + i);
+
+                    int cornerA = EdgeToCornersA[triTableIndex];
+                    int cornerB = EdgeToCornersB[triTableIndex];
+
+                    float w1 = cubeData[cornerA].r;
+                    float w2 = cubeData[cornerB].r;
+
+                    float t = (0.5 - w1) / (w2 - w1);
+                    float3 vertex = lerp(CornerPositions[cornerA], CornerPositions[cornerB], t) /** _Lod*/; // should be saturated
+
+                    vertices[i] = gridPos + vertex;
+                }
+
+                float3 v1 = vertices[1] - vertices[0];
+                float3 v2 = vertices[2] - vertices[0];
+                float3 n = normalize(cross(v1, v2));
+
+               // vertIndex ^= 1;
+                if (vertIndex == 1)
                     vertIndex = 0;
-                
-                triTableIndex = getTri(cubeIndex, triIndex * 3 + vertIndex);//TriTable[cubeIndex][triIndex * 3 + vertIndex];
-                
-                mask *= triTableIndex != -1 ? 1.0 : 0.0;
+                else if(vertIndex == 0)
+                    vertIndex = 1;
+ 
+             //   n = sampleNormal(vertices[vertIndex]);
 
-                int cornerA = EdgeToCornersA[triTableIndex];
-                int cornerB = EdgeToCornersB[triTableIndex];
-
-                float w1 = cubeData[cornerA].r;
-                float w2 = cubeData[cornerB].r;
-
-                //float t = saturate((0.5 - w1) / max(abs(w2 - w1), 1e-5));
-                float t = (0.5 - w1) / (w2 - w1);
-                float3 vertex = lerp(CornerPositions[cornerA], CornerPositions[cornerB], t) /** _Lod*/; // should be saturated
-
-                //vertices[i] = (gridPos + vertex) / _VoxelAmount;
-              //  }
-
-               // float3 v1 = vertices[1] - vertices[0];
-               // float3 v2 = vertices[2] - vertices[0];
-               // float3 n = normalize(cross(v1, v2));
-               // float color = 1.0;// sample(gridPos + n).r * 32.0;
-
-                // Alpha value of vertex can be used to select color, alternatively empty.
-
-                // Swap face direction
-                
-
-                return float4((gridPos + vertex) / _VoxelAmount, 1.0) * mask;
-                //return float4(vertices[vertIndex], color);
+                return EncodeVertex(vertices[vertIndex] / _VoxelAmount, -n) * mask;
+                //return float4(vertices[vertIndex], 1.0) * mask;
             } 
             ENDCG
         }
