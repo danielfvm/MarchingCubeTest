@@ -1276,6 +1276,7 @@ MonoBehaviour:
   DynamicMaterials:
   - {fileID: 10303, guid: 0000000000000000f000000000000000, type: 0}
   - {fileID: 2100000, guid: 0e1eefc6f853a2d94bae79e303588e50, type: 2}
+  - {fileID: 2100000, guid: 5c2f18079e80c2ada942ddcb691e30d8, type: 2}
   - {fileID: 2100000, guid: 37ebfde8274ea73d8826c8eb2bef1134, type: 2}
   - {fileID: 2100000, guid: 20f5720de82449184a9f43a2f476b93a, type: 2}
   LightMapsNear: []
