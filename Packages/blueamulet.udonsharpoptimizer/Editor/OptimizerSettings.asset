@@ -1,0 +1,26 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9cfbdc65b36fa2c43be3fe4856dd061b, type: 3}
+  m_Name: OptimizerSettings
+  m_EditorClassIdentifier: 
+  EnableOptimizer: 1
+  CopyAndLoad: 1
+  CopyAndTest: 1
+  StoreAndCopy: 1
+  DoubleCopy: 1
+  CleanUnreadCopy: 1
+  DirectJump: 1
+  EnableTCO: 1
+  EnableVariableReduction: 1
+  EnableBlockReduction: 1
+  EnableStoreLoad: 1
+  EnableThisBugFix: 1

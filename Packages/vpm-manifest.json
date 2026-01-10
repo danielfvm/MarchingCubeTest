@@ -2,6 +2,18 @@
   "dependencies": {
     "com.vrchat.worlds": {
       "version": "3.10.1"
+    },
+    "dev.onevr.vrworldtoolkit": {
+      "version": "3.3.2"
+    },
+    "com.z3y.vrcmarker": {
+      "version": "2.4.0"
+    },
+    "blueamulet.udonsharpoptimizer": {
+      "version": "1.0.12"
+    },
+    "dev.vrlabs.hierarchyplus": {
+      "version": "1.3.2"
     }
   },
   "locked": {
@@ -14,6 +26,24 @@
       "dependencies": {
         "com.vrchat.base": "3.10.1"
       }
+    },
+    "dev.onevr.vrworldtoolkit": {
+      "version": "3.3.2",
+      "dependencies": {}
+    },
+    "com.z3y.vrcmarker": {
+      "version": "2.4.0",
+      "dependencies": {}
+    },
+    "blueamulet.udonsharpoptimizer": {
+      "version": "1.0.12",
+      "dependencies": {
+        "com.vrchat.worlds": "^3.4.2"
+      }
+    },
+    "dev.vrlabs.hierarchyplus": {
+      "version": "1.3.2",
+      "dependencies": {}
     }
   }
 }
