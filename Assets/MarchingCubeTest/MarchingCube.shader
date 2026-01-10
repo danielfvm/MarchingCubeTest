@@ -116,11 +116,12 @@ Shader "GenerateMesh/MarchingCube"
                // {
                   //  triTableIndex = TriTable[cubeIndex][triIndex * 3 + i];
                  // vertIndex ^= 1;
-                 if (vertIndex == 0)
+                if (vertIndex == 0)
                     vertIndex = 1;
                 else if (vertIndex == 1)
                     vertIndex = 0;
-                 triTableIndex = getTri(cubeIndex, triIndex * 3 + vertIndex);//TriTable[cubeIndex][triIndex * 3 + vertIndex];
+                
+                triTableIndex = getTri(cubeIndex, triIndex * 3 + vertIndex);//TriTable[cubeIndex][triIndex * 3 + vertIndex];
                 
                 mask *= triTableIndex != -1 ? 1.0 : 0.0;
 

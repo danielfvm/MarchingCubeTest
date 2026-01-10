@@ -26,7 +26,7 @@ RenderSettings:
   m_AmbientIntensity: 1
   m_AmbientMode: 1
   m_SubtractiveShadowColor: {r: 0.42, g: 0.478, b: 0.627, a: 1}
-  m_SkyboxMaterial: {fileID: 2100000, guid: 54c404bd5e3d644418d4316d32b11a65, type: 2}
+  m_SkyboxMaterial: {fileID: 2100000, guid: d6b895a903cd4da46bab5feefa3cb8da, type: 2}
   m_HaloStrength: 0.5
   m_FlareStrength: 1
   m_FlareFadeSpeed: 3
@@ -38,7 +38,7 @@ RenderSettings:
   m_ReflectionIntensity: 1
   m_CustomReflection: {fileID: 0}
   m_Sun: {fileID: 0}
-  m_IndirectSpecularColor: {r: 0.3322065, g: 0.3627174, b: 0.46474278, a: 1}
+  m_IndirectSpecularColor: {r: 0.33220437, g: 0.36271805, b: 0.4647516, a: 1}
   m_UseRadianceAmbientProbe: 0
 --- !u!157 &3
 LightmapSettings:
@@ -346,13 +346,13 @@ MonoBehaviour:
   meshCollider: {fileID: 430121803}
   matMarchingCube: {fileID: 2100000, guid: e43614c6b38992e558f2ad4baa684478, type: 2}
   matMipMap: {fileID: 2100000, guid: 85838087635bef8e1921c9cba6fa9978, type: 2}
+  matWriteActiveTexels: {fileID: 2100000, guid: f9ced6a9da025e5c6b1356aca0db4c4e, type: 2}
   matCompactTexels: {fileID: 2100000, guid: 0fa2f3ce42b43795683425d3c8161307, type: 2}
   debugData: {fileID: 2100000, guid: 0e1eefc6f853a2d94bae79e303588e50, type: 2}
   debugMipMap: {fileID: 2100000, guid: 37ebfde8274ea73d8826c8eb2bef1134, type: 2}
   debugCompact: {fileID: 2100000, guid: 5c2f18079e80c2ada942ddcb691e30d8, type: 2}
   text: {fileID: 34985667}
   test: {fileID: 2800000, guid: a34fb7943f6cd8f3d9bda03638b5c934, type: 3}
-  mipMap: {fileID: 8600000, guid: e59d1e42d946899f6a133ed0c1f5e387, type: 2}
 --- !u!4 &430121807
 Transform:
   m_ObjectHideFlags: 0
@@ -1125,7 +1125,7 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
   m_LocalPosition: {x: 1.103, y: 1.087, z: 0}
-  m_LocalScale: {x: 1, y: 2, z: 1}
+  m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
@@ -1278,7 +1278,7 @@ MonoBehaviour:
   - {fileID: 2100000, guid: 0e1eefc6f853a2d94bae79e303588e50, type: 2}
   - {fileID: 2100000, guid: 5c2f18079e80c2ada942ddcb691e30d8, type: 2}
   - {fileID: 2100000, guid: 37ebfde8274ea73d8826c8eb2bef1134, type: 2}
-  - {fileID: 2100000, guid: 20f5720de82449184a9f43a2f476b93a, type: 2}
+  - {fileID: 2100000, guid: 63ed773c119a08409b3ec292f19a3292, type: 2}
   LightMapsNear: []
   LightMapsFar: []
   LightMode: 0
@@ -1418,7 +1418,7 @@ MeshRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 2100000, guid: 26f20fe83f519384b9736d4be6ea7790, type: 2}
+  - {fileID: 2100000, guid: 63ed773c119a08409b3ec292f19a3292, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0

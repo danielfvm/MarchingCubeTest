@@ -16,6 +16,7 @@ public class MarchingCubeMeshGenerator : UdonSharpBehaviour
     [Header("Compute")]
     public Material matMarchingCube;
     public Material matMipMap;
+    public Material matWriteActiveTexels;
     public Material matCompactTexels;
     //public Material matDeflate;
 
@@ -28,15 +29,15 @@ public class MarchingCubeMeshGenerator : UdonSharpBehaviour
     private const int texDim = 1024;
 
     private readonly int[] Triangles = new int[texDim * texDim];
-    private RenderTexture data, compact, deflate;
+    private RenderTexture data, compact, deflate, mipMap;
 
     public Text text;
     public Texture test;
-    public CustomRenderTexture mipMap;
+    //public CustomRenderTexture mipMap;
 
     private int VoxelAmount;
 
-    private RenderTexture[] mipMapDoubleBuffer;
+    //private RenderTexture[] mipMapDoubleBuffer;
 
     // 8bit R
     // 
@@ -53,6 +54,11 @@ public class MarchingCubeMeshGenerator : UdonSharpBehaviour
         data.filterMode = FilterMode.Point;
         data.Create();
 
+        mipMap = new RenderTexture(texDim, texDim, 0, RenderTextureFormat.RFloat);
+        mipMap.useMipMap = true;
+        mipMap.filterMode = FilterMode.Point;
+        mipMap.Create();
+
         compact = new RenderTexture(texDim / 4, texDim / 4, 0, RenderTextureFormat.ARGB32);
         compact.filterMode = FilterMode.Point;
         compact.Create();
@@ -63,13 +69,14 @@ public class MarchingCubeMeshGenerator : UdonSharpBehaviour
 
         transform.localScale = Vector3.one / VoxelAmount;
 
-        mipMapDoubleBuffer = new RenderTexture[2];
+
+       /* mipMapDoubleBuffer = new RenderTexture[2];
         for (int i = 0; i < mipMapDoubleBuffer.Length; i++)
         {
             mipMapDoubleBuffer[i] = new RenderTexture(texDim, texDim * 2, 0, RenderTextureFormat.ARGB32);
             mipMapDoubleBuffer[i].filterMode = FilterMode.Point;
             mipMapDoubleBuffer[i].Create();
-        }
+        }*/
 
         //Generate();
     }
@@ -87,20 +94,16 @@ public class MarchingCubeMeshGenerator : UdonSharpBehaviour
         matMarchingCube.SetInteger("_Lod", 1);
         matMarchingCube.SetInteger("_VoxelAmount", VoxelAmount);
         VRCGraphics.Blit(null, data, matMarchingCube);
-    
               
         matMipMap.SetTexture("_DataTex", data);
 
         
         // Generate MipMaps for CompactSparseTexture
         //var mipMap = GenerateMipMaps(texDim, data);
-        mipMap.Update(2);
+       // mipMap.Update(2);
 
-        SendCustomEventDelayedFrames(nameof(Test), 2);
-    }
-
-    public void Test()
-    {
+        matWriteActiveTexels.SetTexture("_DataTex", data);
+        VRCGraphics.Blit(null, mipMap, matWriteActiveTexels);
 
         // Compute CompactSparseTexture
         matCompactTexels.SetTexture("_DataTex", data);

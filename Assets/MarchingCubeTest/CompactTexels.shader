@@ -88,13 +88,13 @@ Shader "GenerateMesh/Compact Texels"
 
 			inline float CountActiveTexels(int3 uv, int2 offset)
 			{
-				float mipSize = 1.0 / (1 << uv.z);
+				/*float mipSize = 1.0 / (1 << uv.z);
 				float mipOffsetY = (uv.z == 0) ? 0.0 : (1.0 + (1.0 - mipSize * 2.0)) * 0.5;
 
 				uint2 pos = uv.xy + uint2(0, (1 - mipOffsetY) * 1024);
 
-				return UnpackFloat4ToUInt(_ActiveTexelMap.Load(uint3(pos, 0), offset));
-				//(float)(1 << (uv.z + uv.z)) * _ActiveTexelMap.Load(uv, offset);
+				return UnpackFloat4ToUInt(_ActiveTexelMap.Load(uint3(pos, 0), offset));*/
+				return (float)(1 << (uv.z + uv.z)) * _ActiveTexelMap.Load(uv, offset);
 			}
 
 			int2 ActiveTexelIndexToUV(float index)
@@ -148,7 +148,7 @@ Shader "GenerateMesh/Compact Texels"
                 //_DataTex.GetDimensions(dim.x, dim.y);
 
 				if (all(IN.uv * dim >= dim - 1)) {
-					return float4(rgb_to_srgb(_ActiveTexelMap.Load(uint3(0, 1, 0)).rgb), 1.0);
+					return float4(rgb_to_srgb(PackUIntToFloat4(CountActiveTexels(int3(0, 0, round(log2(1024))), 0))), 1.0);
 				}
 
 				int2 uv = ActiveTexelIndexToUV(UVToIndex(IN.uv * dim));
