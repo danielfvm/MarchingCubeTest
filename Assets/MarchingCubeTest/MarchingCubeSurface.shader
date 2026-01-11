@@ -11,34 +11,22 @@ Shader "Custom/MarchingCubeSurface"
     CGINCLUDE
     void DecodeVertex(float4 encoded, out float3 position, out float3 normal)
     {
-        // Position
-        /*uint p = data.x;
-        uint3 qp = uint3(p & 1023u, (p >> 10) & 1023u, (p >> 20) & 1023u);
-        position = float3(qp) / 1023.0;
+        uint3 d = uint3(
+            encoded.x * float(0xFFFFF) + 0.5,
+            encoded.y * float(0xFFFFF) + 0.5,
+            encoded.z * float(0xFFFFF) + 0.5
+        );
 
-        // Normal
-        uint n = data.y;
-        uint3 qn = uint3(n & 1023u, (n >> 10) & 1023u, (n >> 20) & 1023u);
-        normal = float3(qn) / 1023.0;
-        normal = normal * 2.0 - 1.0;
-        normal = normalize(normal);*/
+        uint qp_x = d.x & 0x3FF;
+        uint qp_y = (d.x >> 10) & 0x3FF;
+        uint qp_z = d.y & 0x3FF;
 
-        // Step 1: Convert floats back to uint
-    // Step 1: Convert float [0,1] back to uint16
-    uint r = uint(encoded.r * 65535.0 + 0.5);
-    uint g = uint(encoded.g * 65535.0 + 0.5);
-    uint b = uint(encoded.b * 65535.0 + 0.5);
+        uint qn_x = (d.y >> 10) & 0x3FF;
+        uint qn_y = d.z & 0x3FF;
+        uint qn_z = (d.z >> 10) & 0x3FF;
 
-    uint qp_x = r & 0xFF;
-    uint qp_y = (r >> 8) & 0xFF;
-    uint qp_z = g & 0xFF;
-
-    uint qn_x = (g >> 8) & 0xFF;
-    uint qn_y = b & 0xFF;
-    uint qn_z = (b >> 8) & 0xFF;
-
-    position = float3(qp_x, qp_y, qp_z) / 255.0;
-    normal   = float3(qn_x, qn_y, qn_z) / 255.0 * 2.0 - 1.0;
+        position = float3(qp_x, qp_y, qp_z) / float(0x3FF) - 0.5;
+        normal   = float3(qn_x, qn_y, qn_z) / float(0x3FF) * 2.0 - 1.0;
     }
 
     ENDCG
@@ -104,6 +92,7 @@ Shader "Custom/MarchingCubeSurface"
             #pragma vertex vert
             #pragma fragment frag
             #pragma target 2.0
+            
             #include "UnityCG.cginc"
 
             struct v2f
@@ -115,7 +104,6 @@ Shader "Custom/MarchingCubeSurface"
             v2f vert(appdata_full v)
             {
                 v2f o;
-
 
                 float3 normal;
                 float3 position;
