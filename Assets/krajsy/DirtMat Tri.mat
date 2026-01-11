@@ -1,0 +1,194 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!21 &2100000
+Material:
+  serializedVersion: 8
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: DirtMat Tri
+  m_Shader: {fileID: 4800000, guid: fdada6e90d9ed4e41ace483aa086ea42, type: 3}
+  m_Parent: {fileID: 0}
+  m_ModifiedSerializedProperties: 0
+  m_ValidKeywords: []
+  m_InvalidKeywords: []
+  m_LightmapFlags: 4
+  m_EnableInstancingVariants: 0
+  m_DoubleSidedGI: 0
+  m_CustomRenderQueue: -1
+  stringTagMap: {}
+  disabledShaderPasses: []
+  m_LockedProperties: 
+  m_SavedProperties:
+    serializedVersion: 3
+    m_TexEnvs:
+    - _Ambientocclusion:
+        m_Texture: {fileID: 2800000, guid: 61647bbc327c2884d8e4834356325ef9, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _AmbientocclusionTwo:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _BumpMap:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _Color:
+        m_Texture: {fileID: 2800000, guid: d797be16f2b41b04c9b2c0cae641b943, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _ColorTwo:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _DetailAlbedoMap:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _DetailMask:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _DetailNormalMap:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _DirtTex_1:
+        m_Texture: {fileID: 2800000, guid: d797be16f2b41b04c9b2c0cae641b943, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _DirtTex_2:
+        m_Texture: {fileID: 2800000, guid: d797be16f2b41b04c9b2c0cae641b943, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _EmissionMap:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _GrassTex_1:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _GrassTex_2:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _MainTex:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _MetallicGlossMap:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _Metalness:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _MetalnessTwo:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _Normal:
+        m_Texture: {fileID: 2800000, guid: eccef9308d117474284c4d6abc66dc70, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _NormalTwo:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _OcclusionMap:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _ParallaxMap:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _Roughness:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _RoughnessTwo:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _StoneTex_1:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _StoneTex_2:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    m_Ints: []
+    m_Floats:
+    - _AmbientocclusionStrength: 1
+    - _AmbientocclusionStrengthTwo: 1
+    - _BeachFade: 0.5
+    - _BeachLevel: 0
+    - _BeachNoiseMul: -1
+    - _BeachNoiseOffset: 0
+    - _BumpScale: 1
+    - _ColorEmission: 0
+    - _ColorHueShift: 0
+    - _ColorTwoAngle: 1
+    - _ColorTwoEmission: 0
+    - _ColorTwoFalloff: 5.5
+    - _ColorTwoHueShift: 0
+    - _Cutoff: 0.5
+    - _DebugBool: 0
+    - _DebugFloat: 0
+    - _DetailNormalMapScale: 1
+    - _DirtBottomY: 0
+    - _DirtSurfaceY: 50
+    - _DstBlend: 0
+    - _GlossMapScale: 1
+    - _Glossiness: 0.1
+    - _GlossyReflections: 1
+    - _Metallic: 0
+    - _MetalnessStrength: 0
+    - _MetalnessStrengthTwo: 1
+    - _Mode: 0
+    - _MountainFade: 0.5
+    - _MountainLevel: 50
+    - _MountainNoiseMul: 1
+    - _MountainNoiseOffset: 0
+    - _NearClipDistance: 0.1
+    - _NearClipDistanceMultiplier: 1
+    - _NearClipFadeSpeed: 500
+    - _NormalStrength: 0
+    - _NormalStrengthTwo: 1
+    - _OcclusionStrength: 1
+    - _Parallax: 0.02
+    - _RoughnessStrength: 1
+    - _RoughnessStrengthTwo: 1
+    - _SmoothnessTextureChannel: 0
+    - _SnowAngle: 0.5
+    - _SnowExp: 12.5
+    - _SnowHeight: 10
+    - _SpecularHighlights: 1
+    - _SrcBlend: 1
+    - _TestValue: 0
+    - _Tiling: 1
+    - _TilingTwo: 1
+    - _UVSec: 0
+    - _ViewDistance: 1000
+    - _ZWrite: 1
+    m_Colors:
+    - _Color: {r: 1, g: 1, b: 1, a: 1}
+    - _ColorTint: {r: 1, g: 1, b: 1, a: 1}
+    - _ColorTwoTint: {r: 1, g: 1, b: 1, a: 1}
+    - _DirtColor_1: {r: 1, g: 1, b: 1, a: 1}
+    - _DirtColor_2: {r: 1, g: 1, b: 1, a: 1}
+    - _EmissionColor: {r: 0, g: 0, b: 0, a: 1}
+    - _GrassColor_1: {r: 1, g: 1, b: 1, a: 1}
+    - _GrassColor_2: {r: 1, g: 1, b: 1, a: 1}
+    - _SandColor_1: {r: 1, g: 1, b: 1, a: 1}
+    - _SandColor_2: {r: 1, g: 1, b: 1, a: 1}
+    - _SnowColor: {r: 1, g: 1, b: 1, a: 1}
+    - _TriWeights: {r: 1, g: 1, b: 1, a: 1}
+    - _TriWeightsTwo: {r: 1, g: 1, b: 1, a: 1}
+  m_BuildTextureStacks: []
