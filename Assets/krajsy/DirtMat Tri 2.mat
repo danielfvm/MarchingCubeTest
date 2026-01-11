@@ -56,11 +56,11 @@ Material:
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _DirtTex_1:
-        m_Texture: {fileID: 2800000, guid: d797be16f2b41b04c9b2c0cae641b943, type: 3}
-        m_Scale: {x: 1, y: 1}
+        m_Texture: {fileID: 2800000, guid: 6bfd89e6f09619448a83255c78b64b1b, type: 3}
+        m_Scale: {x: 3, y: 3}
         m_Offset: {x: 0, y: 0}
     - _DirtTex_2:
-        m_Texture: {fileID: 2800000, guid: d797be16f2b41b04c9b2c0cae641b943, type: 3}
+        m_Texture: {fileID: 0}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _EmissionMap:
@@ -159,6 +159,7 @@ Material:
     - _NearClipDistance: 0.1
     - _NearClipDistanceMultiplier: 1
     - _NearClipFadeSpeed: 500
+    - _NormalRounding: 1
     - _NormalStrength: 0
     - _NormalStrengthTwo: 1
     - _OcclusionStrength: 1

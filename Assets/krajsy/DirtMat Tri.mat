@@ -24,7 +24,7 @@ Material:
     serializedVersion: 3
     m_TexEnvs:
     - _Ambientocclusion:
-        m_Texture: {fileID: 2800000, guid: 61647bbc327c2884d8e4834356325ef9, type: 3}
+        m_Texture: {fileID: 0}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _AmbientocclusionTwo:
@@ -36,7 +36,7 @@ Material:
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _Color:
-        m_Texture: {fileID: 2800000, guid: d797be16f2b41b04c9b2c0cae641b943, type: 3}
+        m_Texture: {fileID: 2800000, guid: 6bfd89e6f09619448a83255c78b64b1b, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _ColorTwo:
@@ -92,7 +92,7 @@ Material:
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _Normal:
-        m_Texture: {fileID: 2800000, guid: eccef9308d117474284c4d6abc66dc70, type: 3}
+        m_Texture: {fileID: 0}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _NormalTwo:
@@ -120,6 +120,10 @@ Material:
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _StoneTex_2:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _TopTexture0:
         m_Texture: {fileID: 0}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
@@ -177,6 +181,7 @@ Material:
     - _UVSec: 0
     - _ViewDistance: 1000
     - _ZWrite: 1
+    - __dirty: 1
     m_Colors:
     - _Color: {r: 1, g: 1, b: 1, a: 1}
     - _ColorTint: {r: 1, g: 1, b: 1, a: 1}
@@ -189,6 +194,6 @@ Material:
     - _SandColor_1: {r: 1, g: 1, b: 1, a: 1}
     - _SandColor_2: {r: 1, g: 1, b: 1, a: 1}
     - _SnowColor: {r: 1, g: 1, b: 1, a: 1}
-    - _TriWeights: {r: 1, g: 1, b: 1, a: 1}
+    - _TriWeights: {r: 1, g: 1, b: 1, a: 43.45}
     - _TriWeightsTwo: {r: 1, g: 1, b: 1, a: 1}
   m_BuildTextureStacks: []
