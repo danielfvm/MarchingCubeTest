@@ -15,14 +15,15 @@ public class MarchingCubeMeshGenerator : UdonSharpBehaviour
     public MeshCollider meshCollider;
     
     [Header("Compute")]
+    public Material matDraw;
     public Material matMarchingCube;
     public Material matWriteActiveTexels;
     public Material matCompactTexels;
     //public Material matDeflate;
 
-
     [Header("Debug")]
     public Material debugData;
+    public Material debugVertex;
     public Material debugMipMap;
     public Material debugCompact; 
 
@@ -36,6 +37,11 @@ public class MarchingCubeMeshGenerator : UdonSharpBehaviour
     private int VoxelAmount;
     private bool inVR;
 
+    // Grid data, this should be put into its own Chunk in the future
+    private RenderTexture data, dbData;
+
+    private int paintPass, resetPass;
+
     // 8bit R
     // 
     void Start()
@@ -44,6 +50,13 @@ public class MarchingCubeMeshGenerator : UdonSharpBehaviour
 
         VoxelAmount = Mathf.FloorToInt(Mathf.Pow(texDim/4, 2f/3f));
         Debug.Log("Voxel Size: " + VoxelAmount);
+
+        data = new RenderTexture(texDim/4, texDim/4, 0, RenderTextureFormat.R8);
+        data.filterMode = FilterMode.Point;
+        data.Create();
+        dbData = new RenderTexture(texDim/4, texDim/4, 0, RenderTextureFormat.R8);
+        dbData.filterMode = FilterMode.Point;
+        dbData.Create();
 
         // Do it once and later just use it in Array.Copy
         for (int i = 0; i < Triangles.Length; i++)
@@ -65,16 +78,45 @@ public class MarchingCubeMeshGenerator : UdonSharpBehaviour
         deflate = new RenderTexture(texDim, texDim, 0, RenderTextureFormat.ARGB32);
         deflate.filterMode = FilterMode.Point;
         deflate.Create();
+
+        paintPass = matDraw.FindPass("Paint");
+        resetPass = matDraw.FindPass("Reset");
     }
 
     long timeStart;
 
-    public void Generate()
+
+    public void Reset()
     {
+        VRCGraphics.Blit(null, data, matDraw, resetPass);
+        VRCGraphics.Blit(null, dbData, matDraw, resetPass);
+
+        Generate(data);
+    }
+
+    public void Draw(Vector3 position)
+    {
+        Vector3 local = transform.InverseTransformPoint(position);
+        Debug.Log(local);
+
+        matDraw.SetVector("_Position", (local + Vector3.one * 0.5f) * VoxelAmount);
+        matDraw.SetInteger("_VoxelAmount", VoxelAmount);
+        matDraw.SetTexture("_PrevData", dbData);
+        VRCGraphics.Blit(null, data, matDraw, paintPass);
+        VRCGraphics.Blit(data, dbData); // if things dont work, blame this code here
+
+        Generate(data);
+    }
+
+    public void Generate(Texture weights)
+    {
+        debugData.SetTexture("_MainTex", weights);
+
         timeStart = DateTimeOffset.Now.ToUnixTimeMilliseconds();
 
         // Generate data
         // Generate MarchingCube Triangle Data
+        matMarchingCube.SetTexture("_Data", weights);
         matMarchingCube.SetFloat("_MyTime", Time.time);
         matMarchingCube.SetVector("_TargetSize", new Vector2(texDim, texDim));
         matMarchingCube.SetInteger("_Lod", 1);
@@ -93,7 +135,7 @@ public class MarchingCubeMeshGenerator : UdonSharpBehaviour
         timeStart = DateTimeOffset.Now.ToUnixTimeMilliseconds();   
 
         // Just for debugging, delete later
-        debugData.SetTexture("_MainTex", vertexData);
+        debugVertex.SetTexture("_MainTex", vertexData);
         debugMipMap.SetTexture("_MainTex", mipMap);
         debugCompact.SetTexture("_MainTex", compact);
 
@@ -109,7 +151,7 @@ public class MarchingCubeMeshGenerator : UdonSharpBehaviour
             doUpdate = Input.GetKey(KeyCode.F);
 
         if (doUpdate)
-            Generate();
+            Generate(data);
     }
 
     public override void InputLookVertical(float value, UdonInputEventArgs args)
@@ -117,6 +159,14 @@ public class MarchingCubeMeshGenerator : UdonSharpBehaviour
         if (inVR)
             doUpdate = value > 0.8;
     }
+
+    #if UNITY_EDITOR && !COMPILER_UDONSHARP
+    void OnDrawGizmos()
+    {
+        Gizmos.color = Color.white;
+        Gizmos.DrawWireCube(transform.position, Vector3.one);
+    }
+    #endif
 
     public override void OnAsyncGpuReadbackComplete(VRCAsyncGPUReadbackRequest request)
     {
@@ -168,7 +218,7 @@ public class MarchingCubeMeshGenerator : UdonSharpBehaviour
         mesh.vertices = new Vector3[len];
         mesh.colors = colors;
         mesh.triangles = triangles;
-        mesh.bounds = new Bounds(Vector3.one / 2, Vector3.one);
+        mesh.bounds = new Bounds(Vector3.zero, Vector3.one);
         
         // mesh.RecalculateNormals();
         // mesh.RecalculateBounds();

@@ -13,7 +13,7 @@ Shader "GenerateMesh/MarchingCube"
             #include "UnityCG.cginc"
             #include "MarchingCubeTables.cginc"
 
-            Texture2D<float2> _DataTex;
+            Texture2D<float> _Data;
             float _MyTime;
 
             uint2 _TargetSize;
@@ -41,21 +41,37 @@ Shader "GenerateMesh/MarchingCube"
                 return index;
             }
 
-            float2 sample(int3 pos)
+            
+
+            float sampleWeight(float3 pos)
+            {
+                float weight = 1 - distance(pos, _VoxelAmount / 2) * (sin(_MyTime) * 0.1 + 0.15);
+                return saturate(weight);
+            }
+
+            /*float2 sample(int3 pos)
             {
                 float weight = 1 - distance(pos, _VoxelAmount / 2) * (sin(_MyTime) * 0.1 + 0.15);
                 return float2(saturate(weight), 1);
              
                 //int index = pos.x + pos.y * _VoxelAmount + pos.z * _VoxelAmount * _VoxelAmount;
                 //return _DataTex[uint2(index % dim.x, index / dim.x)];
-            }
+            }*/
+
+            float sample(uint3 pos)
+            {
+                uint index = pos.x + pos.y * _VoxelAmount + pos.z * _VoxelAmount * _VoxelAmount;
+                uint2 uv = uint2(index % dim.x, index / dim.y);
+
+                return _Data[uv];
+            } 
 
             float3 sampleNormal(float3 pos)
             {
                 float3 grad;
-                grad.x = sample(pos + int3(1,0,0)).r - sample(pos + int3(-1,0,0)).r;
-                grad.y = sample(pos + int3(0,1,0)).r - sample(pos + int3(0,-1,0)).r;
-                grad.z = sample(pos + int3(0,0,1)).r - sample(pos + int3(0,0,-1)).r;
+                grad.x = sampleWeight(pos + int3(1,0,0)).r - sampleWeight(pos + int3(-1,0,0)).r;
+                grad.y = sampleWeight(pos + int3(0,1,0)).r - sampleWeight(pos + int3(0,-1,0)).r;
+                grad.z = sampleWeight(pos + int3(0,0,1)).r - sampleWeight(pos + int3(0,0,-1)).r;
                 return normalize(grad);
             }
  
@@ -69,20 +85,20 @@ Shader "GenerateMesh/MarchingCube"
 
             float4 EncodeVertex(float3 position, float3 normal)
             {
-                uint3 qp = uint3(saturate(position) * 255.0 + 0.5);
-                uint3 qn = uint3((normalize(normal) * 0.5 + 0.5) * 255.0 + 0.5);
+                uint3 qp = uint3(saturate(position) * 0x3FF);
+                uint3 qn = uint3((normalize(normal) * 0.5 + 0.5) * 0x3FF);
 
-                return float4(  
-                    (qp.x | (qp.y << 8)) / float(0xFFFF), 
-                    (qp.z | (qn.x << 8)) / float(0xFFFF), 
-                    (qn.y | (qn.z << 8)) / float(0xFFFF), 
-                    1.0 
+                return float4(
+                    (qp.x | (qp.y << 10)) / float(0xFFFFF), 
+                    (qp.z | (qn.x << 10)) / float(0xFFFFF), 
+                    (qn.y | (qn.z << 10)) / float(0xFFFFF), 
+                    1.0
                 );
             }
 
 			float4 frag (v2f IN) : SV_Target
             {
-                _DataTex.GetDimensions(dim.x, dim.y);
+                _Data.GetDimensions(dim.x, dim.y);
 
                 uint2 uv = IN.uv * 1024; // TODO: Change with dynamic code
 
@@ -105,14 +121,14 @@ Shader "GenerateMesh/MarchingCube"
                 mask *= all(gridPos < subAmount) ? 1.0 : 0.0;
 
                 int i;
-                float2 cubeData[8];
+                float cubeData[8];
                 [unroll] for (i = 0; i < 8; i++)
                     cubeData[i] = sample(gridPos + CornerPositions[i] /* * _Lod*/);
                 
                 // Determine cube configuration based on corner weights
                 uint cubeIndex = 0;
                 [unroll] for (i = 0; i < 8; i++)
-                    cubeIndex |= ((cubeData[i].r > 0.5) ? 1u : 0u) << i;
+                    cubeIndex |= ((cubeData[i] > 0.5) ? 1u : 0u) << i;
 
                 // Skip if the cube is entirely inside or outside the surface
                 mask *= (cubeIndex != 0 && cubeIndex != 0xFF) ? 1.0 : 0.0;
@@ -130,8 +146,8 @@ Shader "GenerateMesh/MarchingCube"
                     int cornerA = EdgeToCornersA[triTableIndex];
                     int cornerB = EdgeToCornersB[triTableIndex];
 
-                    float w1 = cubeData[cornerA].r;
-                    float w2 = cubeData[cornerB].r;
+                    float w1 = cubeData[cornerA];
+                    float w2 = cubeData[cornerB];
 
                     float t = (0.5 - w1) / (w2 - w1);
                     float3 vertex = lerp(CornerPositions[cornerA], CornerPositions[cornerB], t) /** _Lod*/; // should be saturated
@@ -143,7 +159,8 @@ Shader "GenerateMesh/MarchingCube"
                 float3 v2 = vertices[2] - vertices[0];
                 float3 n = normalize(cross(v1, v2));
 
-               // vertIndex ^= 1;
+                // ^= Should technically do the same but its broken on Quest for some reason
+                // vertIndex ^= 1;
                 if (vertIndex == 1)
                     vertIndex = 0;
                 else if(vertIndex == 0)
