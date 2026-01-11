@@ -40,24 +40,7 @@ Shader "GenerateMesh/MarchingCube"
 
                 return index;
             }
-
             
-
-            float sampleWeight(float3 pos)
-            {
-                float weight = 1 - distance(pos, _VoxelAmount / 2) * (sin(_MyTime) * 0.1 + 0.15);
-                return saturate(weight);
-            }
-
-            /*float2 sample(int3 pos)
-            {
-                float weight = 1 - distance(pos, _VoxelAmount / 2) * (sin(_MyTime) * 0.1 + 0.15);
-                return float2(saturate(weight), 1);
-             
-                //int index = pos.x + pos.y * _VoxelAmount + pos.z * _VoxelAmount * _VoxelAmount;
-                //return _DataTex[uint2(index % dim.x, index / dim.x)];
-            }*/
-
             float sample(uint3 pos)
             {
                 uint index = pos.x + pos.y * _VoxelAmount + pos.z * _VoxelAmount * _VoxelAmount;
@@ -65,6 +48,16 @@ Shader "GenerateMesh/MarchingCube"
 
                 return _Data[uv];
             } 
+
+            float sampleWeight(float3 pos)
+            {
+                float w0 = sample(pos);
+                float wX = lerp(w0, sample(pos + int3(1,0,0)), pos.x % 1.0);
+                float wY = lerp(wX, sample(pos + int3(0,1,0)), pos.y % 1.0);
+                float wZ = lerp(wY, sample(pos + int3(0,0,1)), pos.z % 1.0);
+
+                return wZ; 
+            }
 
             float3 sampleNormal(float3 pos)
             {
@@ -166,7 +159,7 @@ Shader "GenerateMesh/MarchingCube"
                 else if(vertIndex == 0)
                     vertIndex = 1;
  
-             //   n = sampleNormal(vertices[vertIndex]);
+                n = sampleNormal(vertices[vertIndex]);
 
                 return EncodeVertex(vertices[vertIndex] / _VoxelAmount, -n) * mask;
                 //return float4(vertices[vertIndex], 1.0) * mask;

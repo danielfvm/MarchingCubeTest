@@ -117,8 +117,8 @@ Shader "GenerateMesh/Compact Texels"
 
 			float4 frag (v2f IN) : SV_Target
 			{
-				dim = 256;
-                //_DataTex.GetDimensions(dim.x, dim.y);
+                // _DataTex.GetDimensions(dim.x, dim.y);
+				dim = 512;
 
 				if (all(IN.uv * dim >= dim - 1)) {
 					uint count = CountActiveTexels(int3(0, 0, round(log2(1024))), 0);

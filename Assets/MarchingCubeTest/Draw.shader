@@ -65,9 +65,31 @@ Shader "GenerateMesh/Draw"
             {
                 float weight = sample(gridPos);
                 float d = distance(gridPos, _Position);
-                float p = max(1.0 - d * 0.1, 0) * 1.0;
+                float p = max(1.0 - d * 0.2, 0) * 1.0;
 
                 return saturate(max(weight, p));
+            } 
+            ENDCG
+        }
+
+        Pass
+        {
+            Name "Erase"
+            ZTest Always
+            CGPROGRAM
+            #pragma vertex vert
+            #pragma fragment frag
+            #pragma target 5.0
+
+            float3 _Position;
+
+			float compute(int3 gridPos)
+            {
+                float weight = sample(gridPos);
+                float d = distance(gridPos, _Position);
+                float p = max(1.0 - d * 0.2, 0) * 1.0;
+
+                return saturate(min(weight, 1.0 - p));
             } 
             ENDCG
         }

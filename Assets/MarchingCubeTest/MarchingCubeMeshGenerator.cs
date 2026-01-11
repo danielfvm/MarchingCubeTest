@@ -40,7 +40,7 @@ public class MarchingCubeMeshGenerator : UdonSharpBehaviour
     // Grid data, this should be put into its own Chunk in the future
     private RenderTexture data, dbData;
 
-    private int paintPass, resetPass;
+    private int erasePass, paintPass, resetPass;
 
     // 8bit R
     // 
@@ -71,7 +71,7 @@ public class MarchingCubeMeshGenerator : UdonSharpBehaviour
         mipMap.filterMode = FilterMode.Point; 
         mipMap.Create();
 
-        compact = new RenderTexture(texDim / 4, texDim / 4, 0, RenderTextureFormat.ARGBFloat);
+        compact = new RenderTexture(texDim / 2, texDim / 2, 0, RenderTextureFormat.ARGBFloat);
         compact.filterMode = FilterMode.Point;
         compact.Create();
 
@@ -80,6 +80,7 @@ public class MarchingCubeMeshGenerator : UdonSharpBehaviour
         deflate.Create();
 
         paintPass = matDraw.FindPass("Paint");
+        erasePass = matDraw.FindPass("Erase");
         resetPass = matDraw.FindPass("Reset");
     }
 
@@ -103,6 +104,20 @@ public class MarchingCubeMeshGenerator : UdonSharpBehaviour
         matDraw.SetInteger("_VoxelAmount", VoxelAmount);
         matDraw.SetTexture("_PrevData", dbData);
         VRCGraphics.Blit(null, data, matDraw, paintPass);
+        VRCGraphics.Blit(data, dbData); // if things dont work, blame this code here
+
+        Generate(data);
+    }
+
+    public void Erase(Vector3 position)
+    {
+        Vector3 local = transform.InverseTransformPoint(position);
+        Debug.Log(local);
+
+        matDraw.SetVector("_Position", (local + Vector3.one * 0.5f) * VoxelAmount);
+        matDraw.SetInteger("_VoxelAmount", VoxelAmount);
+        matDraw.SetTexture("_PrevData", dbData);
+        VRCGraphics.Blit(null, data, matDraw, erasePass);
         VRCGraphics.Blit(data, dbData); // if things dont work, blame this code here
 
         Generate(data);

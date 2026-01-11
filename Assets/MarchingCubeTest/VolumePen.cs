@@ -8,12 +8,19 @@ using VRC.Udon;
 public class VolumePen : UdonSharpBehaviour
 {
     public MarchingCubeMeshGenerator generator;
+    public bool erase;
     private bool used;
 
     public void Update()
     {
         if (used)
-            generator.Draw(transform.position);
+        {
+            if (erase)
+                generator.Erase(transform.position);
+            else
+                generator.Draw(transform.position);
+            
+        }
     }
 
 
