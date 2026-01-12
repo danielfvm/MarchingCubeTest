@@ -1972,12 +1972,13 @@ MonoBehaviour:
   useAssignedLayers: 0
   DynamicPrefabs: []
   DynamicMaterials:
+  - {fileID: 10303, guid: 0000000000000000f000000000000000, type: 0}
   - {fileID: 2100000, guid: 47de24fb5ec77661c9cc29c9d3c5c42c, type: 2}
   - {fileID: 2100000, guid: 0e1eefc6f853a2d94bae79e303588e50, type: 2}
-  - {fileID: 10303, guid: 0000000000000000f000000000000000, type: 0}
   - {fileID: 2100000, guid: 5c2f18079e80c2ada942ddcb691e30d8, type: 2}
   - {fileID: 2100000, guid: 37ebfde8274ea73d8826c8eb2bef1134, type: 2}
-  - {fileID: 2100000, guid: 63ed773c119a08409b3ec292f19a3292, type: 2}
+  - {fileID: 2100000, guid: dd1c4e0932a2b35ff91bb833033a1d74, type: 2}
+  - {fileID: 2100000, guid: 2f81f0e46a93996488b9a87cd4785466, type: 2}
   LightMapsNear: []
   LightMapsFar: []
   LightMode: 0

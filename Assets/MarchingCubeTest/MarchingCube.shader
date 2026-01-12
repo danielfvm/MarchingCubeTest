@@ -41,13 +41,20 @@ Shader "GenerateMesh/MarchingCube"
                 return index;
             }
             
-            float sample(uint3 pos)
+            float sample(int3 pos)
             {
+                pos = clamp(pos, 0, _VoxelAmount - 1);
                 uint index = pos.x + pos.y * _VoxelAmount + pos.z * _VoxelAmount * _VoxelAmount;
                 uint2 uv = uint2(index % dim.x, index / dim.y);
 
                 return _Data[uv];
-            } 
+            }
+
+            /*float sample(int3 pos)
+            {
+                float weight = 1 - distance(pos, _VoxelAmount / 2) * (sin(_MyTime) * 0.1 + 0.15);
+                return saturate(weight);
+            }*/
 
             float sampleWeight(float3 pos)
             {

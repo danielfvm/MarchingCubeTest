@@ -51,10 +51,10 @@ public class MarchingCubeMeshGenerator : UdonSharpBehaviour
         VoxelAmount = Mathf.FloorToInt(Mathf.Pow(texDim/4, 2f/3f));
         Debug.Log("Voxel Size: " + VoxelAmount);
 
-        data = new RenderTexture(texDim/4, texDim/4, 0, RenderTextureFormat.R8);
+        data = new RenderTexture(texDim/4, texDim/4, 0, RenderTextureFormat.RFloat);
         data.filterMode = FilterMode.Point;
         data.Create();
-        dbData = new RenderTexture(texDim/4, texDim/4, 0, RenderTextureFormat.R8);
+        dbData = new RenderTexture(texDim/4, texDim/4, 0, RenderTextureFormat.RFloat);
         dbData.filterMode = FilterMode.Point;
         dbData.Create();
 
@@ -179,7 +179,7 @@ public class MarchingCubeMeshGenerator : UdonSharpBehaviour
     void OnDrawGizmos()
     {
         Gizmos.color = Color.white;
-        Gizmos.DrawWireCube(transform.position, Vector3.one);
+        Gizmos.DrawWireCube(transform.position, transform.lossyScale);
     }
     #endif
 

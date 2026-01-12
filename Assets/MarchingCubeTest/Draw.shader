@@ -83,6 +83,8 @@ Shader "GenerateMesh/Draw"
 
             float3 _Position;
 
+            
+
 			float compute(int3 gridPos)
             {
                 float weight = sample(gridPos);

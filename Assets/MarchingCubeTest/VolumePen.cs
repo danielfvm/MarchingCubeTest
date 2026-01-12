@@ -11,10 +11,14 @@ public class VolumePen : UdonSharpBehaviour
     public bool erase;
     private bool used;
 
+    int i = 0;
+
     public void Update()
     {
-        if (used)
+        i++;
+        if (used && i > 2)
         {
+            i = 0;
             if (erase)
                 generator.Erase(transform.position);
             else
