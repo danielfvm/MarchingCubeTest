@@ -34,27 +34,6 @@ Shader "GenerateMesh/Compact Texels"
             #define WIDTH dim.x //((uint)_ActiveTexelMap_TexelSize.z)
 			#define HEIGHT dim.y //((uint)_ActiveTexelMap_TexelSize.w)
 
-            // adapted from: https://lemire.me/blog/2018/01/08/how-fast-can-you-bit-interleave-32-bit-integers/
-			uint InterleaveWithZero(uint word)
-			{
-				word = (word ^ (word << 8)) & 0x00ff00ff;
-				word = (word ^ (word << 4)) & 0x0f0f0f0f;
-				word = (word ^ (word << 2)) & 0x33333333;
-				word = (word ^ (word << 1)) & 0x55555555;
-				return word;
-			}
-
-			// adapted from: https://stackoverflow.com/questions/3137266/how-to-de-interleave-bits-unmortonizing
-			uint DeinterleaveWithZero(uint word)
-			{
-				word &= 0x55555555;
-				word = (word | (word >> 1)) & 0x33333333;
-				word = (word | (word >> 2)) & 0x0f0f0f0f;
-				word = (word | (word >> 4)) & 0x00ff00ff;
-				word = (word | (word >> 8)) & 0x0000ffff;
-				return word;
-			}
-
 			inline uint2 IndexToUV(uint index)
 			{
 				return uint2(index % HEIGHT, index / HEIGHT);

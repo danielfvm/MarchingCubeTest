@@ -66,7 +66,7 @@ Shader "GenerateMesh/MarchingCube"
                 return wZ; 
             }
 
-            float3 sampleNormal(float3 pos)
+            float3 sampleHighQualityNormal(float3 pos)
             {
                 float3 grad;
                 grad.x = sampleWeight(pos + int3(1,0,0)).r - sampleWeight(pos + int3(-1,0,0)).r;
@@ -74,7 +74,31 @@ Shader "GenerateMesh/MarchingCube"
                 grad.z = sampleWeight(pos + int3(0,0,1)).r - sampleWeight(pos + int3(0,0,-1)).r;
                 return normalize(grad);
             }
+
+            float3 sampleSimpleNormal(float3 pos)
+            {
+                float w = sample(pos);
+                return normalize(float3(
+                    sample(pos + int3(1,0,0)) - w,
+                    sample(pos + int3(0,1,0)) - w,
+                    sample(pos + int3(0,0,1)) - w
+                ));
+            } 
  
+            float3 sampleFlatNormal(float cubeData[8], float3 pos)
+            {
+                float x = lerp(cubeData[0], cubeData[1], pos.x);
+                float y = lerp(cubeData[0], cubeData[3], pos.y);
+                float z = lerp(cubeData[0], cubeData[4], pos.z);
+                float w = (x + y + z) / 3.0;
+
+                return normalize(float3( 
+                    cubeData[1] - w,
+                    cubeData[3] - w,
+                    cubeData[4] - w
+                ));
+            }
+
             v2f vert (appdata_base v)
             {
                 v2f o;
@@ -133,15 +157,17 @@ Shader "GenerateMesh/MarchingCube"
                 // Skip if the cube is entirely inside or outside the surface
                 mask *= (cubeIndex != 0 && cubeIndex != 0xFF) ? 1.0 : 0.0;
 
-                int triTableIndex = getTri(cubeIndex, triIndex * 3);
-                mask *= triTableIndex != -1 ? 1.0 : 0.0;
+                //int triTableIndex = getTri(cubeIndex, triIndex * 3);
+                //mask *= triTableIndex != -1 ? 1.0 : 0.0;
 
-                float3 vertices[3];
+                //float3 vertices[3];
                     
+                vertIndex ^= int(vertIndex < 2);
                 // Loop not needed if normal is not needed
-                [unroll] for (int i = 0; i < 3; i++)
-                {
-                    triTableIndex = getTri(cubeIndex, triIndex * 3 + i);
+                //[unroll] for (int i = 0; i < 3; i++)
+                //{
+                    int triTableIndex = getTri(cubeIndex, triIndex * 3 + /*i*/ vertIndex);
+                    mask *= triTableIndex != -1 ? 1.0 : 0.0;
 
                     int cornerA = EdgeToCornersA[triTableIndex];
                     int cornerB = EdgeToCornersB[triTableIndex];
@@ -150,25 +176,28 @@ Shader "GenerateMesh/MarchingCube"
                     float w2 = cubeData[cornerB];
 
                     float t = (0.5 - w1) / (w2 - w1);
-                    float3 vertex = lerp(CornerPositions[cornerA], CornerPositions[cornerB], t) /** _Lod*/; // should be saturated
+                    float3 offset = lerp(CornerPositions[cornerA], CornerPositions[cornerB], t) /** _Lod*/; // should be saturated
 
-                    vertices[i] = gridPos + vertex;
-                }
+                    float3 vertex = gridPos + offset;
+                    //vertices[i] = gridPos + offset;
+                //}
 
-                float3 v1 = vertices[1] - vertices[0];
-                float3 v2 = vertices[2] - vertices[0];
-                float3 n = normalize(cross(v1, v2));
+                //float3 v1 = vertices[1] - vertices[0];
+                //float3 v2 = vertices[2] - vertices[0];
+                //float3 n = normalize(cross(v1, v2));
 
                 // ^= Should technically do the same but its broken on Quest for some reason
                 // vertIndex ^= 1;
-                if (vertIndex == 1)
-                    vertIndex = 0;
-                else if(vertIndex == 0)
-                    vertIndex = 1;
- 
-                n = sampleNormal(vertices[vertIndex]);
-
-                return EncodeVertex(vertices[vertIndex] / _VoxelAmount, -n) * mask;
+                //if (vertIndex == 1)
+                //    vertIndex = 0;
+                //else if(vertIndex == 0)
+                //    vertIndex = 1;
+  
+                //float3 n = sampleFlatNormal(cubeData, offset);
+                // float3 n = sampleSimpleNormal(vertex);
+                float3 n = sampleHighQualityNormal(vertex);
+                
+                return EncodeVertex(vertex / _VoxelAmount, -n) * mask;
                 //return float4(vertices[vertIndex], 1.0) * mask;
             } 
             ENDCG

@@ -86,13 +86,14 @@ public class MarchingCubeMeshGenerator : UdonSharpBehaviour
 
     long timeStart;
 
+    bool swap;
 
     public void Reset()
     {
-        VRCGraphics.Blit(null, data, matDraw, resetPass);
-        VRCGraphics.Blit(null, dbData, matDraw, resetPass);
+        swap = !swap;
+        VRCGraphics.Blit(null, swap ? data : dbData, matDraw, resetPass);
 
-        Generate(data);
+        Generate(swap ? data : dbData);
     }
 
     public void Draw(Vector3 position)
@@ -102,11 +103,12 @@ public class MarchingCubeMeshGenerator : UdonSharpBehaviour
 
         matDraw.SetVector("_Position", (local + Vector3.one * 0.5f) * VoxelAmount);
         matDraw.SetInteger("_VoxelAmount", VoxelAmount);
-        matDraw.SetTexture("_PrevData", dbData);
-        VRCGraphics.Blit(null, data, matDraw, paintPass);
-        VRCGraphics.Blit(data, dbData); // if things dont work, blame this code here
+        matDraw.SetTexture("_PrevData", swap ? data : dbData);
 
-        Generate(data);
+        swap = !swap;
+        VRCGraphics.Blit(null, swap ? data : dbData, matDraw, paintPass);
+
+        Generate(swap ? data : dbData);
     }
 
     public void Erase(Vector3 position)
@@ -116,11 +118,12 @@ public class MarchingCubeMeshGenerator : UdonSharpBehaviour
 
         matDraw.SetVector("_Position", (local + Vector3.one * 0.5f) * VoxelAmount);
         matDraw.SetInteger("_VoxelAmount", VoxelAmount);
-        matDraw.SetTexture("_PrevData", dbData);
-        VRCGraphics.Blit(null, data, matDraw, erasePass);
-        VRCGraphics.Blit(data, dbData); // if things dont work, blame this code here
+        matDraw.SetTexture("_PrevData", swap ? data : dbData);
 
-        Generate(data);
+        swap = !swap;
+        VRCGraphics.Blit(null, swap ? data : dbData, matDraw, erasePass);
+
+        Generate(swap ? data : dbData);
     }
 
     public void Generate(Texture weights)
