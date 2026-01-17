@@ -2,12 +2,14 @@
 using Cysharp.Threading.Tasks.Triggers;
 using UdonSharp;
 using UnityEngine;
+using VolumetricPens;
 using VRC.SDKBase;
 using VRC.Udon;
 
 public class VolumePen : UdonSharpBehaviour
 {
     public MarchingCubeMeshGenerator generator;
+    public MarchingCubeSystem system;
     public bool erase;
     private bool used;
 
@@ -19,10 +21,11 @@ public class VolumePen : UdonSharpBehaviour
         if (used && i > 2)
         {
             i = 0;
-            if (erase)
+            system.Paint(transform.position, 0.1f);
+            /*if (erase)
                 generator.Erase(transform.position);
             else
-                generator.Draw(transform.position);
+                generator.Draw(transform.position);*/
             
         }
     }

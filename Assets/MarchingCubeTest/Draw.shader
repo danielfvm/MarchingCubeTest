@@ -5,6 +5,7 @@ Shader "GenerateMesh/Draw"
 
     Texture2D<float> _PrevData;
     
+    uint3 _Chunk;
     uint _VoxelAmount;
     uint2 dim;
 
@@ -44,7 +45,7 @@ Shader "GenerateMesh/Draw"
             (voxelIndex / _VoxelAmount) / _VoxelAmount
         );
 
-        return compute(gridPos);
+        return floor(compute(gridPos + _Chunk * _VoxelAmount) * 64) / 64.0; // Quantize to store multiple weights in one pixel might work but reduces quality, also requires to build mesh per color
     }
     ENDCG
 
@@ -65,7 +66,7 @@ Shader "GenerateMesh/Draw"
             {
                 float weight = sample(gridPos);
                 float d = distance(gridPos, _Position);
-                float p = max(1.0 - d * 0.2, 0) * 1.0;
+                float p = max(1.0 - d * 0.1, 0) * 1.0;
 
                 return saturate(max(weight, p));
             } 
@@ -89,7 +90,7 @@ Shader "GenerateMesh/Draw"
             {
                 float weight = sample(gridPos);
                 float d = distance(gridPos, _Position);
-                float p = max(1.0 - d * 0.2, 0) * 1.0;
+                float p = max(1.0 - d * 0.1, 0) * 1.0;
 
                 return saturate(min(weight, 1.0 - p));
             } 

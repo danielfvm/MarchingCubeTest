@@ -41,6 +41,7 @@ public class MarchingCubeMeshGenerator : UdonSharpBehaviour
     private RenderTexture data, dbData;
 
     private int erasePass, paintPass, resetPass;
+    private Mesh mesh;
 
     // 8bit R
     // 
@@ -82,6 +83,12 @@ public class MarchingCubeMeshGenerator : UdonSharpBehaviour
         paintPass = matDraw.FindPass("Paint");
         erasePass = matDraw.FindPass("Erase");
         resetPass = matDraw.FindPass("Reset");
+
+
+        mesh = new Mesh();
+        mesh.MarkDynamic();
+        mesh.bounds = new Bounds(Vector3.zero, transform.lossyScale);
+        mesh.indexFormat = UnityEngine.Rendering.IndexFormat.UInt32;
     }
 
     long timeStart;
@@ -228,15 +235,20 @@ public class MarchingCubeMeshGenerator : UdonSharpBehaviour
         Array.Copy(Triangles, triangles, len);
         text.text += "Loop: " + (DateTimeOffset.Now.ToUnixTimeMilliseconds() - timeStart) + "ms\n";  
 
+        if (len == 0)
+        {
+            swap = !swap;
+            VRCGraphics.Blit(null, swap ? this.data : dbData, matDraw, resetPass);
+        }
+
 
         timeStart = DateTimeOffset.Now.ToUnixTimeMilliseconds();   
-        var mesh = new Mesh();
-        mesh.indexFormat = UnityEngine.Rendering.IndexFormat.UInt32;
         //mesh.vertices = vertices;
-        mesh.vertices = new Vector3[len];
-        mesh.colors = colors;
-        mesh.triangles = triangles;
-        mesh.bounds = new Bounds(Vector3.zero, Vector3.one);
+       // mesh.SetVertices(new Vector3[len], 0, len, UnityEngine.Rendering.MeshUpdateFlags.DontRecalculateBounds);
+        mesh.Clear(true);
+        mesh.SetVertices(new Vector3[len], 0, len, UnityEngine.Rendering.MeshUpdateFlags.DontRecalculateBounds);
+        mesh.SetColors(colors, 0, len, UnityEngine.Rendering.MeshUpdateFlags.DontRecalculateBounds);
+        mesh.SetIndices(triangles, MeshTopology.Triangles, 0, false);
         
         // mesh.RecalculateNormals();
         // mesh.RecalculateBounds();
