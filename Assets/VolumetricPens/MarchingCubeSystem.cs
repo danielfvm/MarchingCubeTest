@@ -138,7 +138,7 @@ namespace VolumetricPens
 
             int blockCount = chunks.Count;
             float sizeMb = blockCount * 256f * 256f * 4f / 1024f / 1024f;
-            text.text = "Blocks: " + blockCount + "\nSize: " + (Mathf.Floor(sizeMb * 100f) / 100f)  + "mb";
+            text.text = "Blocks: " + blockCount + "\nSize: " + (Mathf.Floor(sizeMb * 100f) / 100f)  + "MB";
         }
 
         #if UNITY_EDITOR && !COMPILER_UDONSHARP
