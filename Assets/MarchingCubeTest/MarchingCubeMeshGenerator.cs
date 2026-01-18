@@ -25,7 +25,7 @@ public class MarchingCubeMeshGenerator : UdonSharpBehaviour
     public Material debugData;
     public Material debugVertex;
     public Material debugMipMap;
-    public Material debugCompact; 
+    public Material debugCompact;
 
     private const int texDim = 1024;
 

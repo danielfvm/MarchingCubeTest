@@ -72,48 +72,48 @@ Shader "Custom/MarchingCubeSurface"
         UNITY_INSTANCING_BUFFER_START(Props)
         UNITY_INSTANCING_BUFFER_END(Props)
 
-float3 projectOnPlane(float3 vec, float3 normal)
-{
-    return vec - normal * dot(vec, normal);
-}
+        float3 projectOnPlane(float3 vec, float3 normal)
+        {
+            return vec - normal * dot(vec, normal);
+        }
 
-#define mod(x, y) (x - y * floor(x / y))
+        #define mod(x, y) (x - y * floor(x / y))
 
-fixed4 TriplanarSampleTest(sampler2D _texture, float2 _tiling, float2 _offset, float3 _pos, float3 _worldNormal)
-{
-	_worldNormal = normalize(_worldNormal);
+        fixed4 TriplanarSampleTest(sampler2D _texture, float2 _tiling, float2 _offset, float3 _pos, float3 _worldNormal)
+        {
+            _worldNormal = normalize(_worldNormal);
 
-	fixed4 result = 1;
-	float3 normalUp = normalize(projectOnPlane(normalize(float3(0.0, 1.0, 0.01)), _worldNormal));
-	// float3 normalRight = normalize(projectOnPlane(normalize(float3(1.0, 0.0, 0.01)), _worldNormal));
-	float3 normalRight = normalize(cross(_worldNormal, normalUp));
+            fixed4 result = 1;
+            float3 normalUp = normalize(projectOnPlane(normalize(float3(0.0, 1.0, 0.01)), _worldNormal));
+            // float3 normalRight = normalize(projectOnPlane(normalize(float3(1.0, 0.0, 0.01)), _worldNormal));
+            float3 normalRight = normalize(cross(_worldNormal, normalUp));
 
-	// result = tex2D(_texture, _pos.zy * _tiling);
+            // result = tex2D(_texture, _pos.zy * _tiling);
 
-	// result.rgb = normalUp;
-	float3 posOnPlane = projectOnPlane(_pos, _worldNormal);
-	float dist = length(posOnPlane);
+            // result.rgb = normalUp;
+            float3 posOnPlane = projectOnPlane(_pos, _worldNormal);
+            float dist = length(posOnPlane);
 
-	float RadToDeg = 180/3.141592;
-	float degToRad = 3.141592/180;
+            float RadToDeg = 180/3.141592;
+            float degToRad = 3.141592/180;
 
-	float xAngle = acos(dot(normalize(posOnPlane), normalRight));
-	float xDist = dist * sin(90 * degToRad - xAngle)/sin(90 * degToRad);
+            float xAngle = acos(dot(normalize(posOnPlane), normalRight));
+            float xDist = dist * sin(90 * degToRad - xAngle)/sin(90 * degToRad);
 
-	float yAngle = acos(dot(normalize(posOnPlane), normalUp));
-	float yDist = dist * sin(90 * degToRad - yAngle)/sin(90 * degToRad);
+            float yAngle = acos(dot(normalize(posOnPlane), normalUp));
+            float yDist = dist * sin(90 * degToRad - yAngle)/sin(90 * degToRad);
 
-	float2 localUv = mod(float2(xDist, yDist), 1.);
+            float2 localUv = mod(float2(xDist, yDist), 1.);
 
-	result = tex2D(_texture, localUv * _tiling + _offset);
+            result = tex2D(_texture, localUv * _tiling + _offset);
 
-	// return fixed4(localUv.xy, 0, 1);
-	// return mod(xDist, .3)/.3;
-	// return (mod(xDist, .5) > .25 ? fixed4(1,0,0,0) : fixed4(0,1,0,0));
-	// return (mod(yDist, .5) > .25 ? fixed4(1,0,0,0) : fixed4(0,1,0,0));
+            // return fixed4(localUv.xy, 0, 1);
+            // return mod(xDist, .3)/.3;
+            // return (mod(xDist, .5) > .25 ? fixed4(1,0,0,0) : fixed4(0,1,0,0));
+            // return (mod(yDist, .5) > .25 ? fixed4(1,0,0,0) : fixed4(0,1,0,0));
 
-	return result; // / ((_weights.x + _weights.y + _weights.z)/3.0);
-}
+            return result; // / ((_weights.x + _weights.y + _weights.z)/3.0);
+        }
 
         float _NormalRounding;
 
@@ -133,6 +133,57 @@ fixed4 TriplanarSampleTest(sampler2D _texture, float2 _tiling, float2 _offset, f
             o.Alpha = c.a;
         }
         ENDCG
+
+        Pass
+        {
+            Name "BlockView"
+            Tags { "RenderType"="Opaque" }
+
+            ZWrite On
+            ZTest LEqual
+            Cull Front
+
+            CGPROGRAM
+            #pragma vertex vert
+            #pragma fragment frag
+            #pragma target 2.0
+            
+            #include "UnityCG.cginc"
+            #include "AutoLight.cginc"
+            #include "UnityLightingCommon.cginc"
+
+            fixed4 _Color;
+
+            struct v2f
+            {
+                float4 pos : SV_POSITION;
+                float3 normal : TEXCOORD0;
+            };
+
+            // Custom deformation logic
+            v2f vert(appdata_full v)
+            { 
+                v2f o;
+
+                float3 normal;
+                float3 position;
+
+                DecodeVertex(v.color, position, normal);
+                
+                TRANSFER_SHADOW_CASTER(o);
+                o.pos = UnityObjectToClipPos(float4(position, 0));
+                o.normal = normal;
+
+                return o;
+            }
+
+            float4 frag(v2f i) : SV_Target
+            {
+                fixed3 color = _Color.rgb * (_LightColor0.rgb * 0.1); // add ambient
+                return fixed4(color, 1);
+            }
+            ENDCG
+        }
 
         Pass
         {

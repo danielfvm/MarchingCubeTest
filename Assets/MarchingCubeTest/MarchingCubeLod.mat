@@ -7,8 +7,8 @@ Material:
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_Name: MipMap
-  m_Shader: {fileID: 4800000, guid: 36f14265575bce06a86a79149db616eb, type: 3}
+  m_Name: MarchingCubeLod
+  m_Shader: {fileID: 4800000, guid: cd088bd01066fe6f7afa6048a5a43411, type: 3}
   m_Parent: {fileID: 0}
   m_ModifiedSerializedProperties: 0
   m_ValidKeywords: []

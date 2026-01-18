@@ -13,6 +13,8 @@ Shader "GenerateMesh/Compact Texels"
 
             Texture2D<float4> _DataTex;
 			Texture2D<float4> _ActiveTexelMap;
+            uint2 _TargetSize;
+            uint _MaxLod;
 
 			struct v2f
 			{
@@ -29,10 +31,8 @@ Shader "GenerateMesh/Compact Texels"
                 return o;
             }
 
-			uint2 dim;
-
-            #define WIDTH dim.x //((uint)_ActiveTexelMap_TexelSize.z)
-			#define HEIGHT dim.y //((uint)_ActiveTexelMap_TexelSize.w)
+            #define WIDTH _TargetSize.x //((uint)_ActiveTexelMap_TexelSize.z)
+			#define HEIGHT _TargetSize.y //((uint)_ActiveTexelMap_TexelSize.w)
 
 			inline uint2 IndexToUV(uint index)
 			{
@@ -51,7 +51,7 @@ Shader "GenerateMesh/Compact Texels"
 
 			int2 ActiveTexelIndexToUV(float index)
 			{
-				float maxLod = round(log2(1024));
+				float maxLod = _MaxLod;
 				int3 uv = int3(0, 0, maxLod);
 				if (index >= CountActiveTexels(uv, int2(0, 0)))
 					return -1;
@@ -96,15 +96,12 @@ Shader "GenerateMesh/Compact Texels"
 
 			float4 frag (v2f IN) : SV_Target
 			{
-                // _DataTex.GetDimensions(dim.x, dim.y);
-				dim = 512;
-
-				if (all(IN.uv * dim >= dim - 1)) {
-					uint count = CountActiveTexels(int3(0, 0, round(log2(1024))), 0);
+				if (all(IN.uv * WIDTH >= WIDTH - 1)) {
+					uint count = CountActiveTexels(int3(0, 0, _MaxLod), 0);
 					return float4(count, 0.0, 0.0, 1.0);
 				}
 
-				int2 uv = ActiveTexelIndexToUV(UVToIndex(IN.uv * dim));
+				int2 uv = ActiveTexelIndexToUV(UVToIndex(IN.uv * _TargetSize));
 				if (uv.x == -1)
 					return 0;  
 
