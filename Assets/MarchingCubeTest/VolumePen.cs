@@ -31,6 +31,7 @@ public class VolumePen : UdonSharpBehaviour
 
         MaterialPropertyBlock block = new MaterialPropertyBlock();
         block.SetInteger("_ColorIndex", colorIndex);
+        if (meshRenderer == null) meshRenderer = this.gameObject.GetComponent<MeshRenderer>();
         meshRenderer.SetPropertyBlock(block);
 
         // Weird workaround to trigger "OnTriggerEnter" and avoid using "OnTriggerStay"

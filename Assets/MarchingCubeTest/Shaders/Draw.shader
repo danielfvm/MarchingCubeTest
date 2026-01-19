@@ -42,17 +42,6 @@ Shader "GenerateMesh/Draw"
         return o;
     }
 
-    // https://iquilezles.org/articles/distfunctions/
-    float sdCapsule(float3 p, float3 a, float3 b)
-    {
-        float3 pa = p - a;
-        float3 ba = b - a;
-
-        float h = saturate(dot(pa, ba) / dot(ba, ba));
-
-        return length(pa - ba * h);
-    }
-
     float sdBezier(float3 pos, float3 A, float3 B, float3 C)
     {
         float3 a = B - A;
@@ -104,6 +93,30 @@ Shader "GenerateMesh/Draw"
         return sqrt(res);
     }
 
+    // https://iquilezles.org/articles/distfunctions/
+    float sdCapsule(float3 p, float3 a, float3 b)
+    {
+        float3 pa = p - a;
+        float3 ba = b - a;
+
+        float h = saturate(dot(pa, ba) / dot(ba, ba));
+
+        return length(pa - ba * h);
+    }
+
+    float sphere(float3 gridPos)
+    {
+        float iso = 0.5;
+        float k = 0.3;
+        float adjustedRadius = _Radius - iso / k;
+
+        #ifdef SHADER_API_MOBILE
+        return 1.0 - (sdCapsule(gridPos, _PositionFrom, _PositionTo) - adjustedRadius) * k;
+        #else
+        return 1.0 - (sdBezier(gridPos, _PositionFrom, _PositionCenter, _PositionTo) - adjustedRadius) * k;
+        #endif
+    }
+
     void compute(int3 grid, inout float weight, inout uint color);
 
     float frag (v2f IN) : SV_Target
@@ -136,18 +149,6 @@ Shader "GenerateMesh/Draw"
         return float(result) / 0xFFFFFF;
     }
 
-    float sphere(float3 gridPos)
-    {
-        float iso = 0.5;
-        float k = 0.3;
-        float adjustedRadius = _Radius - iso / k;
-
-        #ifdef SHADER_API_MOBILE
-        return 1.0 - (sdCapsule(gridPos, _PositionFrom, _PositionTo) - adjustedRadius) * k;
-        #else
-        return 1.0 - (sdBezier(gridPos, _PositionFrom, _PositionCenter, _PositionTo) - adjustedRadius) * k;
-        #endif
-    }
     ENDCG
 
     SubShader
@@ -185,6 +186,10 @@ Shader "GenerateMesh/Draw"
                 float p = sphere(grid);
 
                 weight = saturate(min(weight, 1.0 - p));
+
+                // Experimental subtraction mode
+                // p = max(p - .5, 0.0);
+                // weight = saturate(weight - p);
             } 
             ENDCG
         }
