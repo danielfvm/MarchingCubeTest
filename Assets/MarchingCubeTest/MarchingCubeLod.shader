@@ -41,9 +41,9 @@ Shader "GenerateMesh/MarchingCubeLod"
             
             float sample(int3 pos)
             {
-                pos = clamp(pos + 2, 0, _VoxelAmount + 3);
+                pos = clamp(pos + 1, 0, _VoxelAmount + 2);
                 
-                uint index = pos.x + pos.y * (_VoxelAmount + 4) + pos.z * (_VoxelAmount + 4) * (_VoxelAmount + 4);
+                uint index = pos.x + pos.y * (_VoxelAmount + 2) + pos.z * (_VoxelAmount + 2) * (_VoxelAmount + 2);
                 uint2 uv = uint2(index % dim.x, index / dim.y);
 
                 return _Data[uv];
@@ -126,9 +126,9 @@ Shader "GenerateMesh/MarchingCubeLod"
                 float t = (0.5 - w1) / (w2 - w1);
                 float3 offset = lerp(CornerPositions[cornerA], CornerPositions[cornerB], t); // should be saturated
 
-                float3 vertex = gridPos + offset;
+                float3 vertex = gridPos + offset + 0.25;
 
-                return float4(vertex / _VoxelAmount, 1.0) * mask;
+                return float4(vertex / _VoxelAmount - 0.5, 1.0) * mask;
             } 
             ENDCG
         }

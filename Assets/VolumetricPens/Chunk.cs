@@ -1,10 +1,8 @@
 ﻿
 using UdonSharp;
 using UnityEngine;
-using UnityEngine.UI;
 using VolumetricPens;
 using VRC.SDKBase;
-using VRC.Udon;
 
 public class Chunk : UdonSharpBehaviour
 {
@@ -27,9 +25,11 @@ public class Chunk : UdonSharpBehaviour
 
     private void Init(MarchingCubeSystem system, ulong key)
     {
-        transform.localPosition = DataBlock.ToPos(key);
+        transform.localPosition = ToPos(key);
         this.system = system;
         this.key = key;
+
+        EnableMeshCollider(system.collision);
 
         data = new RenderTexture(1024/4, 1024/4, 0, RenderTextureFormat.RFloat);
         data.filterMode = FilterMode.Point;
@@ -47,11 +47,21 @@ public class Chunk : UdonSharpBehaviour
             mesh[i].indexFormat = UnityEngine.Rendering.IndexFormat.UInt32;
             meshFilter[i].sharedMesh = mesh[i];
         }
-        // TODO: meshCollider
 
         #if UNITY_EDITOR
         name = "Chunk " + transform.localPosition;
         #endif
+    }
+
+    public void EnableMeshCollider(bool enabled)
+    {
+        meshCollider.enabled = enabled;
+    }
+
+    public void UpdateMeshCollider(Mesh mesh)
+    {
+        meshCollider.sharedMesh = null;
+        meshCollider.sharedMesh = mesh;
     }
 
     public void OnDestroy()
@@ -66,6 +76,42 @@ public class Chunk : UdonSharpBehaviour
 
     public Vector3 GetCoord()
     {
-        return DataBlock.ToPos(key);
+        return ToPos(key);
+    }
+
+    public static ulong ToKey(Vector3 pos) 
+    {
+        return ToKey(new Vector3Int(
+            Mathf.FloorToInt(pos.x), 
+            Mathf.FloorToInt(pos.y), 
+            Mathf.FloorToInt(pos.z)
+        ));
+    }
+
+    public static ulong ToKey(Vector3Int pos)
+    {
+        ulong x = (ulong)(pos.x + 0x7FFFF) & 0xFFFFF; // 20 bits
+        ulong y = (ulong)(pos.y + 0x7FFFF) & 0xFFFFF; // 20 bits
+        ulong z = (ulong)(pos.z + 0x7FFFF) & 0xFFFFF; // 20 bits
+
+        return x | (y << 20) | (z << 40);
+    }
+
+    public static Vector3Int ToPosInt(ulong key)
+    {
+        return new Vector3Int(
+            (int)((long)(key & 0xFFFFF) - 0x7FFFF),
+            (int)((long)((key >> 20) & 0xFFFFF) - 0x7FFFF),
+            (int)((long)((key >> 40) & 0xFFFFF) - 0x7FFFF)
+        );
+    }
+
+    public static Vector3 ToPos(ulong key)
+    {
+        return new Vector3(
+            (int)((long)(key & 0xFFFFF) - 0x7FFFF),
+            (int)((long)((key >> 20) & 0xFFFFF) - 0x7FFFF),
+            (int)((long)((key >> 40) & 0xFFFFF) - 0x7FFFF)
+        );
     }
 }

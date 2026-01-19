@@ -8,7 +8,8 @@ Shader "GenerateMesh/Draw"
     float3 _PositionFrom;
     float3 _PositionCenter;
     float3 _PositionTo;
-    
+    float _Radius;
+
     uint3 _Chunk;
     uint _VoxelAmount;
     uint2 _TargetSize;
@@ -119,7 +120,20 @@ Shader "GenerateMesh/Draw"
         gridPos -= 2;
         _VoxelAmount -= 4;
 
-        return /*floor(*/compute(gridPos + _Chunk * _VoxelAmount);// * 64) / 64.0; // Quantize to store multiple weights in one pixel might work but reduces quality, also requires to build mesh per color
+        return floor(compute(gridPos + _Chunk * _VoxelAmount) * 64) / 64.0; // Quantize to store multiple weights in one pixel might work but reduces quality, also requires to build mesh per color
+    }
+
+    float sphere(float3 gridPos)
+    {
+        float iso = 0.5;
+        float k = 0.3;
+        float adjustedRadius = _Radius - iso / k;
+
+        #ifdef SHADER_API_MOBILE
+        return 1.0 - (sdCapsule(gridPos, _PositionFrom, _PositionTo) - adjustedRadius) * k;
+        #else
+        return 1.0 - (sdBezier(gridPos, _PositionFrom, _PositionCenter, _PositionTo) - adjustedRadius) * k;
+        #endif
     }
     ENDCG
 
@@ -137,12 +151,7 @@ Shader "GenerateMesh/Draw"
 			float compute(int3 gridPos)
             {
                 float weight = sample(gridPos);
-
-                #ifdef SHADER_API_MOBILE
-                float p = 1.0 - sdCapsule(gridPos, _PositionFrom, _PositionTo) * 0.2;
-                #else
-                float p = 1.0 - sdBezier(gridPos, _PositionFrom, _PositionCenter, _PositionTo) * 0.2;
-                #endif
+                float p = sphere(gridPos);
 
                 return saturate(max(weight, p));
             } 
@@ -161,12 +170,7 @@ Shader "GenerateMesh/Draw"
 			float compute(int3 gridPos)
             {
                 float weight = sample(gridPos);
-
-                #ifdef SHADER_API_MOBILE
-                float p = 1.0 - sdCapsule(gridPos, _PositionFrom, _PositionTo) * 0.2;
-                #else
-                float p = 1.0 - sdBezier(gridPos, _PositionFrom, _PositionCenter, _PositionTo) * 0.2;
-                #endif
+                float p = sphere(gridPos);
 
                 return saturate(min(weight, 1.0 - p));
             } 

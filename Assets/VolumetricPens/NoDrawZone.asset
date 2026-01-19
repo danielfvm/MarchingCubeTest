@@ -10,17 +10,17 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: c333ccfdd0cbdbc4ca30cef2dd6e6b9b, type: 3}
-  m_Name: DataBlock
+  m_Name: NoDrawZone
   m_EditorClassIdentifier: 
-  serializedUdonProgramAsset: {fileID: 11400000, guid: 01109aa95b260fa3a9c967870f4af8a6, type: 2}
+  serializedUdonProgramAsset: {fileID: 11400000, guid: 2e9458f0257eeccb69b6ed0f656da43e, type: 2}
   udonAssembly: 
   assemblyError: 
-  sourceCsScript: {fileID: 11500000, guid: 4a345598bcf31037d8ef0174bbf6292a, type: 3}
+  sourceCsScript: {fileID: 11500000, guid: ecec390813d8f69289da82ccc7acdf90, type: 3}
   scriptVersion: 2
   compiledVersion: 2
   behaviourSyncMode: 0
   hasInteractEvent: 0
-  scriptID: 6823517093039119648
+  scriptID: -6101755287448890208
   serializationData:
     SerializedFormat: 2
     SerializedBytes: 

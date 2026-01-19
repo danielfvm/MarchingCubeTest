@@ -43,6 +43,7 @@ namespace VolumetricPens
         private RenderTexture vertexData, compact, mipmapVertex;
         private const int texDim = 1024;
         [HideInInspector, NonSerialized] public readonly int[] Triangles = new int[texDim * texDim];
+        [HideInInspector] public bool collision;
         
         private void Start()
         {
@@ -73,6 +74,15 @@ namespace VolumetricPens
                 Triangles[i] = i;
         }
 
+        public void ToggleCollider()
+        {
+            collision = !collision;
+
+            var tokens = chunks.GetValues();
+            for (int i = 0; i < chunks.Count; i++)
+                ((Chunk)tokens[i].Reference).EnableMeshCollider(collision);
+        }
+
         public void Reset()
         {
             var tokens = chunks.GetValues();
@@ -83,14 +93,18 @@ namespace VolumetricPens
             lod.Reset();
         }
 
-        private Chunk GetChunk(ulong key)
+        private bool TryGetChunk(ulong key, out Chunk chunk)
         {
             if (chunks.TryGetValue(key, out DataToken token))
-                return (Chunk)token.Reference;
+            {
+                chunk = (Chunk)token.Reference;
+                return true;
+            }
 
-            Chunk chunk = Chunk.Create(this, key);
+            chunk = Chunk.Create(this, key);
             chunks.SetValue(key, chunk);
-            return chunk;
+            
+            return true;
         }
 
         [NetworkCallable]
@@ -101,12 +115,15 @@ namespace VolumetricPens
             Vector3 localCenter = transform.InverseTransformPoint(center) + Vector3.one * 0.5f;
             Vector3 localTo = transform.InverseTransformPoint(to) + Vector3.one * 0.5f;
 
+            radius /= 2f;
+
             matPaint.SetVector("_PositionFrom", localFrom * VoxelAmount);
             matPaint.SetVector("_PositionCenter", localCenter * VoxelAmount);
             matPaint.SetVector("_PositionTo", localTo * VoxelAmount);
             matPaint.SetInteger("_VoxelAmount", VoxelAmount);
             matPaint.SetTexture("_PrevData", buffer);
             matPaint.SetVector("_TargetSize", new Vector2(buffer.width, buffer.height));
+            matPaint.SetFloat("_Radius", radius * VoxelAmount);
 
             Vector3 min = Vector3.Min(localFrom, Vector3.Min(localCenter, localTo));
             Vector3 max = Vector3.Max(localFrom, Vector3.Max(localCenter, localTo));
@@ -123,8 +140,8 @@ namespace VolumetricPens
             for (int z = minZ; z <= maxZ; z++)
             {
                 Vector3 chunkCoord = new Vector3(x, y, z);
-                ulong key = DataBlock.ToKey(chunkCoord);
-                Chunk chunk = GetChunk(key);
+                if (!TryGetChunk(Chunk.ToKey(chunkCoord), out Chunk chunk))
+                    continue;
 
                 matPaint.SetVector("_Chunk", chunkCoord);
 
@@ -149,7 +166,7 @@ namespace VolumetricPens
             Gizmos.color = Color.white;
 
             foreach (var key in chunks.GetKeys())
-                Gizmos.DrawWireCube(DataBlock.ToPos(key.ULong), Vector3.one);
+                Gizmos.DrawWireCube(Chunk.ToPos(key.ULong), Vector3.one);
 
             Gizmos.matrix = oldMatrix;
         }

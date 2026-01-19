@@ -33,6 +33,7 @@ public class LodSystem : UdonSharpBehaviour
     private RenderTexture[] mipmapData = new RenderTexture[2];
     private RenderTexture vertexData, compact, mipmapVertex;
     private int passMipMap;
+    private bool ready = true;
 
     void Start()
     {
@@ -42,20 +43,20 @@ public class LodSystem : UdonSharpBehaviour
         mipmapData[0].Create();
 
         // 10x10
-        mipmapData[1] = new RenderTexture(32, 32, 0, RenderTextureFormat.RFloat);
-        mipmapData[1].filterMode = FilterMode.Point;
-        mipmapData[1].Create();
+        //mipmapData[1] = new RenderTexture(32, 32, 0, RenderTextureFormat.RFloat);
+        //mipmapData[1].filterMode = FilterMode.Point;
+        //mipmapData[1].Create();
 
-        vertexData = new RenderTexture(128, 128, 0, RenderTextureFormat.ARGBFloat);
+        vertexData = new RenderTexture(512, 512, 0, RenderTextureFormat.ARGBFloat);
         vertexData.filterMode = FilterMode.Point;
         vertexData.Create();
 
-        mipmapVertex = new RenderTexture(128, 128, 0, RenderTextureFormat.RFloat);
+        mipmapVertex = new RenderTexture(512, 512, 0, RenderTextureFormat.RFloat);
         mipmapVertex.useMipMap = true;
         mipmapVertex.filterMode = FilterMode.Point; 
         mipmapVertex.Create();
 
-        compact = new RenderTexture(128 / 2, 128 / 2, 0, RenderTextureFormat.ARGBFloat);
+        compact = new RenderTexture(512 / 2, 512 / 2, 0, RenderTextureFormat.ARGBFloat);
         compact.filterMode = FilterMode.Point;
         compact.Create();
 
@@ -77,7 +78,7 @@ public class LodSystem : UdonSharpBehaviour
 
     void Update()
     {
-        if (queue.Count > 0)
+        if (queue.Count > 0 && ready)
         {
             ulong key = queue.GetKeys()[0].ULong;
             GenerateChunk((Chunk)queue[key].Reference);
@@ -87,6 +88,7 @@ public class LodSystem : UdonSharpBehaviour
 
     private void GenerateChunk(Chunk chunk)
     {
+        ready = false;
         gpuUpdateQueue.Add(chunk);
 
         // Generate mipmap of data
@@ -95,15 +97,15 @@ public class LodSystem : UdonSharpBehaviour
         matMipMapLod.SetVector("_TargetSize", new Vector2(mipmapData[0].width, mipmapData[0].height));
         VRCGraphics.Blit(null, mipmapData[0], matMipMapLod, passMipMap);
 
-        matMipMapLod.SetInteger("_VoxelAmount", 20);
-        matMipMapLod.SetTexture("_PrevData", mipmapData[0]);
-        matMipMapLod.SetVector("_TargetSize", new Vector2(mipmapData[1].width, mipmapData[1].height));
-        VRCGraphics.Blit(null, mipmapData[1], matMipMapLod, passMipMap);
+        //matMipMapLod.SetInteger("_VoxelAmount", 20);
+        //matMipMapLod.SetTexture("_PrevData", mipmapData[0]);
+        //matMipMapLod.SetVector("_TargetSize", new Vector2(mipmapData[1].width, mipmapData[1].height));
+        //VRCGraphics.Blit(null, mipmapData[1], matMipMapLod, passMipMap);
 
         // Generate MarchingCube Triangle Data
-        matMarchingCubeLod.SetTexture("_Data", mipmapData[1]);
+        matMarchingCubeLod.SetTexture("_Data", mipmapData[0]); // 1
         matMarchingCubeLod.SetVector("_TargetSize", new Vector2(vertexData.width, vertexData.height));
-        matMarchingCubeLod.SetInteger("_VoxelAmount", 10 - 4);
+        matMarchingCubeLod.SetInteger("_VoxelAmount", 20 - 2);
         VRCGraphics.Blit(null, vertexData, matMarchingCubeLod);
         
         system.matWriteActiveTexels.SetTexture("_DataTex", vertexData);
@@ -117,8 +119,8 @@ public class LodSystem : UdonSharpBehaviour
         VRCGraphics.Blit(null, compact, system.matCompactTexels);
 
         // Just for visualization
-        debugMipMapData.SetTexture("_MainTex", mipmapData[0]);
-        debugMipMapData2.SetTexture("_MainTex", mipmapData[1]);
+        debugMipMapData2.SetTexture("_MainTex", mipmapData[0]);
+        debugMipMapData.SetTexture("_MainTex", /*mipmapData[1]*/chunk.data);
         debugVertex.SetTexture("_MainTex", vertexData);
         debugMipMap.SetTexture("_MainTex", mipmapVertex);
         debugCompact.SetTexture("_MainTex", compact);
@@ -126,7 +128,7 @@ public class LodSystem : UdonSharpBehaviour
         VRCAsyncGPUReadback.Request(compact, 0, (IUdonEventReceiver)this);
     }
 
-    private readonly Color[] tempData = new Color[128 * 128 / 4];
+    private readonly Color[] tempData = new Color[512 * 512 / 4];
 
     public override void OnAsyncGpuReadbackComplete(VRCAsyncGPUReadbackRequest request)
     {
@@ -176,6 +178,9 @@ public class LodSystem : UdonSharpBehaviour
         //mesh.SetColors(colors, 0, len, UnityEngine.Rendering.MeshUpdateFlags.DontRecalculateBounds);
         mesh.SetIndices(triangles, MeshTopology.Triangles, 0, false);
         mesh.RecalculateNormals();
+
+        chunk.UpdateMeshCollider(mesh);
+        ready = true;
 
         //Debug.Log("Mesh updated!");
     }

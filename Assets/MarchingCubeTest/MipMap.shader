@@ -37,15 +37,15 @@ Shader "GenerateMesh/MipMap"
     {
         _PrevData.GetDimensions(dim.x, dim.y);
 
-        uint2 uv = IN.uv * dim;
-        uint voxelIndex = uv.x + uv.y * dim.x;
+        uint2 uv = IN.uv * _TargetSize;
+        uint voxelIndex = uv.x + uv.y * _TargetSize.x;
 
         // to also compute the border
         int3 gridPos = uint3(
-            voxelIndex % _VoxelAmount, 
-            (voxelIndex / _VoxelAmount) % _VoxelAmount, 
-            (voxelIndex / _VoxelAmount) / _VoxelAmount
-        );
+            voxelIndex % 20, 
+            (voxelIndex / 20) % 20, 
+            (voxelIndex / 20) / 20
+        ) * 2;
 
         return compute(gridPos);
     }
