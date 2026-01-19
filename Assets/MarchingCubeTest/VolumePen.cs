@@ -25,6 +25,14 @@ public class VolumePen : UdonSharpBehaviour
     {
         localPlayer = Networking.LocalPlayer;
         inVR = localPlayer.IsUserInVR();
+
+        // Weird workaround to trigger "OnTriggerEnter" and avoid using "OnTriggerStay"
+        Collider thisCollider = this.gameObject.GetComponent<Collider>();
+        if (thisCollider != null)
+        {
+            thisCollider.enabled = !thisCollider.enabled;
+            thisCollider.enabled = !thisCollider.enabled;
+        }
     }
 
     bool prevValue = false;
@@ -44,9 +52,9 @@ public class VolumePen : UdonSharpBehaviour
     {
         if (picked)
         {
-            if (Input.GetKeyDown(KeyCode.Plus) || Input.GetKeyDown(KeyCode.KeypadPlus))
+            if (Input.GetKeyDown(KeyCode.Plus) || Input.GetKeyDown(KeyCode.KeypadPlus) || Input.GetKeyDown(KeyCode.UpArrow))
                 radius *= 1.2f;
-            if (Input.GetKeyDown(KeyCode.Minus) || Input.GetKeyDown(KeyCode.KeypadMinus))
+            if (Input.GetKeyDown(KeyCode.Minus) || Input.GetKeyDown(KeyCode.KeypadMinus) || Input.GetKeyDown(KeyCode.DownArrow))
                 radius /= 1.2f;
 
             radius = Mathf.Clamp(radius, 0.02f, 1f);
@@ -57,9 +65,15 @@ public class VolumePen : UdonSharpBehaviour
         {
             j = 0;
             i = 0;
-            positionHistory[0] = transform.position;
-            positionHistory[1] = transform.position;
-            positionHistory[2] = transform.position;
+            // positionHistory[0] = transform.position;
+            // positionHistory[1] = transform.position;
+            // positionHistory[2] = transform.position;
+
+            for (int phIndex = 0; phIndex < positionHistory.Length; phIndex++)
+            {
+                positionHistory[phIndex] = transform.position;
+            }
+
             return;
         }
 
@@ -74,7 +88,8 @@ public class VolumePen : UdonSharpBehaviour
 
         if (used && i % 2 == 0 && (canDraw || erase))
         {
-            system.SendCustomNetworkEvent(NetworkEventTarget.All, nameof(MarchingCubeSystem.Paint), positionHistory[(i + 1) % 3], positionHistory[(i + 2) % 3], positionHistory[(i + 3) % 3], erase, radius);
+            system.SendCustomNetworkEvent(NetworkEventTarget.All, nameof(MarchingCubeSystem.Paint), 
+                positionHistory[(i + 1) % 3], positionHistory[(i + 2) % 3], positionHistory[(i + 3) % 3], erase, radius);
             //system.Paint(positionHistory[(i + 1) % 3], positionHistory[(i + 2) % 3], positionHistory[(i + 3) % 3], erase, 0.2f);
         }
 
@@ -93,13 +108,11 @@ public class VolumePen : UdonSharpBehaviour
             prevPos = Vector3.zero;*/
     }
 
-    // TODO: Not performant!
-    private void OnTriggerStay(Collider other)
+    private void OnTriggerEnter(Collider other)
     {
         if (other.gameObject != null && other.gameObject.GetComponent<NoDrawZone>() != null)
             canDraw = false;
     }
-
 
     private void OnTriggerExit(Collider other)
     {
