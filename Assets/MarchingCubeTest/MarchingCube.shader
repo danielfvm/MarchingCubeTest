@@ -40,14 +40,18 @@ Shader "GenerateMesh/MarchingCube"
                 return index;
             }
             
-            float sample(int3 pos)
+            float2 sample(int3 pos)
             {
                 pos = clamp(pos + 2, 0, _VoxelAmount + 3);
                 
                 uint index = pos.x + pos.y * (_VoxelAmount + 4) + pos.z * (_VoxelAmount + 4) * (_VoxelAmount + 4);
                 uint2 uv = uint2(index % dim.x, index / dim.y);
+                uint value = _Data[uv] * 0xFFFFFF;
 
-                return _Data[uv];
+                float weight = float(value >> 8) / 0xFFFF;
+                float color = (value >> 1) & 0xFF;
+
+                return float2(weight, color);
             }
 
             /*float sample(int3 pos)
@@ -58,10 +62,10 @@ Shader "GenerateMesh/MarchingCube"
 
             float sampleWeight(float3 pos)
             {
-                float w0 = sample(pos);
-                float wX = lerp(w0, sample(pos + int3(1,0,0)), pos.x % 1.0);
-                float wY = lerp(wX, sample(pos + int3(0,1,0)), pos.y % 1.0);
-                float wZ = lerp(wY, sample(pos + int3(0,0,1)), pos.z % 1.0);
+                float w0 = sample(pos).r;
+                float wX = lerp(w0, sample(pos + int3(1,0,0)).r, pos.x % 1.0);
+                float wY = lerp(wX, sample(pos + int3(0,1,0)).r, pos.y % 1.0);
+                float wZ = lerp(wY, sample(pos + int3(0,0,1)).r, pos.z % 1.0);
 
                 return wZ; 
             }
@@ -77,11 +81,11 @@ Shader "GenerateMesh/MarchingCube"
 
             float3 sampleSimpleNormal(float3 pos)
             {
-                float w = sample(pos);
+                float w = sample(pos).r;
                 return normalize(float3(
-                    sample(pos + int3(1,0,0)) - w,
-                    sample(pos + int3(0,1,0)) - w,
-                    sample(pos + int3(0,0,1)) - w
+                    sample(pos + int3(1,0,0)).r - w,
+                    sample(pos + int3(0,1,0)).r - w,
+                    sample(pos + int3(0,0,1)).r - w
                 ));
             } 
  
@@ -99,15 +103,7 @@ Shader "GenerateMesh/MarchingCube"
                 ));
             }
 
-            v2f vert (appdata_base v)
-            {
-                v2f o;
-                o.pos = UnityObjectToClipPos(v.vertex);
-                o.uv = v.texcoord;
-                return o;
-            }
-
-            float4 EncodeVertex(float3 position, float3 normal)
+            float4 EncodeVertex(float3 position, float3 normal, uint color)
             {
                 uint3 qp = uint3(saturate(position) * 0x3FF);
                 uint3 qn = uint3((normalize(normal) * 0.5 + 0.5) * 0x3FF);
@@ -116,8 +112,16 @@ Shader "GenerateMesh/MarchingCube"
                     (qp.x | (qp.y << 10)) / float(0xFFFFF), 
                     (qp.z | (qn.x << 10)) / float(0xFFFFF), 
                     (qn.y | (qn.z << 10)) / float(0xFFFFF), 
-                    1.0
+                    float(color) / float(0xFFFFF)
                 );
+            }
+
+            v2f vert (appdata_base v)
+            {
+                v2f o;
+                o.pos = UnityObjectToClipPos(v.vertex);
+                o.uv = v.texcoord;
+                return o;
             }
 
 			float4 frag (v2f IN) : SV_Target
@@ -145,14 +149,14 @@ Shader "GenerateMesh/MarchingCube"
                 mask *= all(gridPos < subAmount) ? 1.0 : 0.0;
 
                 int i;
-                float cubeData[8];
+                float2 cubeData[8];
                 [unroll] for (i = 0; i < 8; i++)
                     cubeData[i] = sample(gridPos + CornerPositions[i] * _Lod);
                 
                 // Determine cube configuration based on corner weights
                 uint cubeIndex = 0;
                 [unroll] for (i = 0; i < 8; i++)
-                    cubeIndex |= ((cubeData[i] > 0.5) ? 1u : 0u) << i;
+                    cubeIndex |= ((cubeData[i].r > 0.5) ? 1u : 0u) << i;
 
                 // Skip if the cube is entirely inside or outside the surface
                 mask *= (cubeIndex != 0 && cubeIndex != 0xFF) ? 1.0 : 0.0;
@@ -172,8 +176,8 @@ Shader "GenerateMesh/MarchingCube"
                     int cornerA = EdgeToCornersA[triTableIndex];
                     int cornerB = EdgeToCornersB[triTableIndex];
 
-                    float w1 = cubeData[cornerA];
-                    float w2 = cubeData[cornerB];
+                    float w1 = cubeData[cornerA].r;
+                    float w2 = cubeData[cornerB].r;
 
                     float t = (0.5 - w1) / (w2 - w1);
                     float3 offset = lerp(CornerPositions[cornerA], CornerPositions[cornerB], t) * _Lod; // should be saturated
@@ -194,8 +198,10 @@ Shader "GenerateMesh/MarchingCube"
                 #else
                 float3 n = sampleHighQualityNormal(vertex);
                 #endif
+
+                uint color = w1 > w2 ? cubeData[cornerA].g : cubeData[cornerB].g;
                 
-                return EncodeVertex(vertex / _VoxelAmount, -n) * mask;
+                return EncodeVertex(vertex / _VoxelAmount, -n, color) * mask;
                 //return float4(vertices[vertIndex], 1.0) * mask;
             } 
             ENDCG

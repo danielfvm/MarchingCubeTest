@@ -21,10 +21,17 @@ public class VolumePen : UdonSharpBehaviour
     private VRCPlayerApi localPlayer;
     private bool inVR;
 
+    public int colorIndex;
+    public MeshRenderer meshRenderer;
+
     private void Start()
     {
         localPlayer = Networking.LocalPlayer;
         inVR = localPlayer.IsUserInVR();
+
+        MaterialPropertyBlock block = new MaterialPropertyBlock();
+        block.SetInteger("_ColorIndex", colorIndex);
+        meshRenderer.SetPropertyBlock(block);
     }
 
     bool prevValue = false;
@@ -74,7 +81,14 @@ public class VolumePen : UdonSharpBehaviour
 
         if (used && i % 2 == 0 && (canDraw || erase))
         {
-            system.SendCustomNetworkEvent(NetworkEventTarget.All, nameof(MarchingCubeSystem.Paint), positionHistory[(i + 1) % 3], positionHistory[(i + 2) % 3], positionHistory[(i + 3) % 3], erase, radius);
+            system.SendCustomNetworkEvent(
+                NetworkEventTarget.All, 
+                nameof(MarchingCubeSystem.Paint), 
+                positionHistory[(i + 1) % 3], 
+                positionHistory[(i + 2) % 3], 
+                positionHistory[(i + 3) % 3], 
+                erase, radius, colorIndex
+            );
             //system.Paint(positionHistory[(i + 1) % 3], positionHistory[(i + 2) % 3], positionHistory[(i + 3) % 3], erase, 0.2f);
         }
 

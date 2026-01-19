@@ -132,6 +132,8 @@ public class LodSystem : UdonSharpBehaviour
 
     public override void OnAsyncGpuReadbackComplete(VRCAsyncGPUReadbackRequest request)
     {
+        ready = true;
+        
         if (request.hasError)
         {
             Debug.LogError("GPU READBACK FAILED");
@@ -157,8 +159,8 @@ public class LodSystem : UdonSharpBehaviour
         for (int i = 0; i < len; i ++)
             vertices[i] = new Vector3(tempData[i].r, tempData[i].g, tempData[i].b);
 
-        //var colors = new Color[len];
-        //Array.Copy(tempData, colors, len);
+        var colors = new Color[len];
+        Array.Copy(tempData, colors, len);
 
         int[] triangles = new int[len];
         Array.Copy(system.Triangles, triangles, len);
@@ -175,7 +177,7 @@ public class LodSystem : UdonSharpBehaviour
 
         mesh.Clear(true); 
         mesh.SetVertices(vertices, 0, len, UnityEngine.Rendering.MeshUpdateFlags.DontRecalculateBounds);
-        //mesh.SetColors(colors, 0, len, UnityEngine.Rendering.MeshUpdateFlags.DontRecalculateBounds);
+        mesh.SetColors(colors, 0, len, UnityEngine.Rendering.MeshUpdateFlags.DontRecalculateBounds);
         mesh.SetIndices(triangles, MeshTopology.Triangles, 0, false);
         mesh.RecalculateNormals();
 
