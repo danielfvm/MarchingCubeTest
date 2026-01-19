@@ -7,8 +7,8 @@ Material:
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_Name: MarchingCubeSurface
-  m_Shader: {fileID: 4800000, guid: 72951824c4c6d8f2094f39715e0bfa08, type: 3}
+  m_Name: Preview
+  m_Shader: {fileID: 4800000, guid: c25853a0b00fc84f28a20d584c827b51, type: 3}
   m_Parent: {fileID: 0}
   m_ModifiedSerializedProperties: 0
   m_ValidKeywords: []
@@ -49,7 +49,7 @@ Material:
         m_Offset: {x: 0, y: 0}
     - _MainTex:
         m_Texture: {fileID: 0}
-        m_Scale: {x: 3, y: 3}
+        m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _MetallicGlossMap:
         m_Texture: {fileID: 0}
@@ -66,16 +66,15 @@ Material:
     m_Ints: []
     m_Floats:
     - _BumpScale: 1
+    - _ColorIndex: 0
     - _Cutoff: 0.5
-    - _DebugFloat: 0.88
     - _DetailNormalMapScale: 1
     - _DstBlend: 0
     - _GlossMapScale: 1
     - _Glossiness: 0
     - _GlossyReflections: 1
-    - _Metallic: 0.25
+    - _Metallic: 0
     - _Mode: 0
-    - _NormalRounding: 1
     - _OcclusionStrength: 1
     - _Parallax: 0.02
     - _SmoothnessTextureChannel: 0

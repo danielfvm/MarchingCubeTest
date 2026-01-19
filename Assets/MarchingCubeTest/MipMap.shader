@@ -15,11 +15,22 @@ Shader "GenerateMesh/MipMap"
         float2 uv : TEXCOORD0;
     };
 
-    float sample(int3 pos)
+    float2 sample(int3 pos)
     {
         uint index = pos.x + pos.y * _VoxelAmount + pos.z * _VoxelAmount  * _VoxelAmount;
         uint2 uv = uint2(index % dim.x, index / dim.y);
 
+        uint value = _PrevData[uv] * 0xFFFFFF;
+        float weight = float(value >> 8) / 0xFFFF;
+        float color = (value & 0xFF) >> 1;
+
+        return float2(weight, color);
+    }
+
+    float sample2(int3 pos)
+    {
+        uint index = pos.x + pos.y * _VoxelAmount + pos.z * _VoxelAmount  * _VoxelAmount;
+        uint2 uv = uint2(index % dim.x, index / dim.y);
         return _PrevData[uv];
     }
 
@@ -65,16 +76,23 @@ Shader "GenerateMesh/MipMap"
 
 			float compute(int3 grid)
             {
-                return (
-                    sample(grid + int3(0,0,0)) + 
-                    sample(grid + int3(0,0,1)) +
-                    sample(grid + int3(0,1,0)) + 
-                    sample(grid + int3(0,1,1)) + 
-                    sample(grid + int3(1,0,0)) + 
-                    sample(grid + int3(1,0,1)) + 
-                    sample(grid + int3(1,1,0)) + 
-                    sample(grid + int3(1,1,1))
+                return sample2(grid); // makes this a bit unecassary
+                /*float2 data = sample(grid + int3(0,0,0));
+                float weight = (
+                    data.r + 
+                    sample(grid + int3(0,0,1)).r +
+                    sample(grid + int3(0,1,0)).r + 
+                    sample(grid + int3(0,1,1)).r + 
+                    sample(grid + int3(1,0,0)).r + 
+                    sample(grid + int3(1,0,1)).r + 
+                    sample(grid + int3(1,1,0)).r + 
+                    sample(grid + int3(1,1,1)).r
                 ) / 8.0;
+
+                uint color = uint(data.g);
+                uint result = ((color << 1) & 0xFF) | (uint(saturate(weight) * 0xFFFF) << 8);
+
+                return float(result) / 0xFFFFFF;*/
             } 
             ENDCG
         }

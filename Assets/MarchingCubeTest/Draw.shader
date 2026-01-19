@@ -9,6 +9,7 @@ Shader "GenerateMesh/Draw"
     float3 _PositionCenter;
     float3 _PositionTo;
     float _Radius;
+    float _ColorIdx;
 
     uint3 _Chunk;
     uint _VoxelAmount;
@@ -21,14 +22,16 @@ Shader "GenerateMesh/Draw"
         float2 uv : TEXCOORD0;
     };
 
-    float sample(int3 pos)
+    void sample(int3 pos, out float weight, out uint color)
     {
         pos = clamp(pos + 2 - _Chunk * _VoxelAmount, 0, _VoxelAmount + 3);
 
-        uint index = pos.x + pos.y * (_VoxelAmount + 4)  + pos.z * (_VoxelAmount + 4)  * (_VoxelAmount + 4);
+        uint index = pos.x + pos.y * (_VoxelAmount + 4) + pos.z * (_VoxelAmount + 4)  * (_VoxelAmount + 4);
         uint2 uv = uint2(index % dim.x, index / dim.y);
+        uint value = _PrevData[uv] * 0xFFFFFF;
 
-        return _PrevData[uv];
+        weight = float(value >> 8) / 0xFFFF;
+        color = (value & 0xFF) >> 1;
     }
 
     v2f vert (appdata_base v)
@@ -101,7 +104,7 @@ Shader "GenerateMesh/Draw"
         return sqrt(res);
     }
 
-    float compute(int3 grid);
+    void compute(int3 grid, inout float weight, inout uint color);
 
     float frag (v2f IN) : SV_Target
     {
@@ -120,7 +123,17 @@ Shader "GenerateMesh/Draw"
         gridPos -= 2;
         _VoxelAmount -= 4;
 
-        return floor(compute(gridPos + _Chunk * _VoxelAmount) * 64) / 64.0; // Quantize to store multiple weights in one pixel might work but reduces quality, also requires to build mesh per color
+        gridPos += _Chunk * _VoxelAmount;
+
+        float weight;
+        uint color;
+
+        sample(gridPos, weight, color);
+        compute(gridPos, weight, color);
+
+        uint result = ((color << 1) & 0xFF) | (uint(saturate(weight) * 0xFFFF) << 8);
+
+        return float(result) / 0xFFFFFF;
     }
 
     float sphere(float3 gridPos)
@@ -148,12 +161,12 @@ Shader "GenerateMesh/Draw"
             #pragma fragment frag
             #pragma target 5.0
 
-			float compute(int3 gridPos)
+			void compute(int3 grid, inout float weight, inout uint color)
             {
-                float weight = sample(gridPos);
-                float p = sphere(gridPos);
+                float p = sphere(grid);
+                color = p > 0.5 ? _ColorIdx : color;
 
-                return saturate(max(weight, p));
+                weight = saturate(max(weight, p));
             } 
             ENDCG
         }
@@ -167,12 +180,11 @@ Shader "GenerateMesh/Draw"
             #pragma fragment frag
             #pragma target 5.0
 
-			float compute(int3 gridPos)
+			void compute(int3 grid, inout float weight, inout uint color)
             {
-                float weight = sample(gridPos);
-                float p = sphere(gridPos);
+                float p = sphere(grid);
 
-                return saturate(min(weight, 1.0 - p));
+                weight = saturate(min(weight, 1.0 - p));
             } 
             ENDCG
         }
@@ -186,34 +198,10 @@ Shader "GenerateMesh/Draw"
             #pragma fragment frag
             #pragma target 5.0
 
-			float compute(int3 grid)
+			void compute(int3 grid, inout float weight, inout uint color)
             {
-                return 0;
-            } 
-            ENDCG
-        }
-
-        Pass
-        {
-            Name "MipMap"
-            ZTest Always
-            CGPROGRAM
-            #pragma vertex vert
-            #pragma fragment frag
-            #pragma target 5.0
-
-			float compute(int3 grid)
-            {
-                return (
-                    sample(grid + int3(0,0,0)) + 
-                    sample(grid + int3(0,0,1)) +
-                    sample(grid + int3(0,1,0)) + 
-                    sample(grid + int3(0,1,1)) + 
-                    sample(grid + int3(1,0,0)) + 
-                    sample(grid + int3(1,0,1)) + 
-                    sample(grid + int3(1,1,0)) + 
-                    sample(grid + int3(1,1,1))
-                ) / 8.0;
+                weight = 0;
+                color = 0;
             } 
             ENDCG
         }

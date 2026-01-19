@@ -108,7 +108,7 @@ namespace VolumetricPens
         }
 
         [NetworkCallable]
-        public void Paint(Vector3 from, Vector3 center, Vector3 to, bool erase, float radius)
+        public void Paint(Vector3 from, Vector3 center, Vector3 to, bool erase, float radius, int colorIdx)
         {
             // Manually unrolled loop and use dictonary as a trick to remove duplicate keys
             Vector3 localFrom = transform.InverseTransformPoint(from) + Vector3.one * 0.5f;
@@ -124,6 +124,7 @@ namespace VolumetricPens
             matPaint.SetTexture("_PrevData", buffer);
             matPaint.SetVector("_TargetSize", new Vector2(buffer.width, buffer.height));
             matPaint.SetFloat("_Radius", radius * VoxelAmount);
+            matPaint.SetInteger("_ColorIdx", colorIdx);
 
             Vector3 min = Vector3.Min(localFrom, Vector3.Min(localCenter, localTo));
             Vector3 max = Vector3.Max(localFrom, Vector3.Max(localCenter, localTo));

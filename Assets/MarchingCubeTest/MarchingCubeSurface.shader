@@ -2,8 +2,8 @@ Shader "Custom/MarchingCubeSurface"
 {
     Properties
     {
+        _ColorPalette ("Color Palette", 2D) = "white" {}
         _Color ("Color", Color) = (1,1,1,1)
-        _MainTex ("Albedo (RGB)", 2D) = "white" {}
         _Glossiness ("Smoothness", Range(0,1)) = 0.5
         _Metallic ("Metallic", Range(0,1)) = 0.0
 
@@ -11,7 +11,7 @@ Shader "Custom/MarchingCubeSurface"
     }
 
     CGINCLUDE
-    void DecodeVertex(float4 encoded, out float3 position, out float3 normal)
+    void DecodeVertex(float4 encoded, out float3 position, out float3 normal, out uint color)
     {
         uint3 d = uint3(
             encoded.x * float(0xFFFFF) + 0.5,
@@ -29,6 +29,7 @@ Shader "Custom/MarchingCubeSurface"
 
         position = float3(qp_x, qp_y, qp_z) / float(0x3FF) - 0.5;
         normal   = float3(qn_x, qn_y, qn_z) / float(0x3FF) * 2.0 - 1.0;
+        color = uint(encoded.w * float(0xFFFFF) + 0.5);
     }
 
     ENDCG
@@ -46,6 +47,8 @@ Shader "Custom/MarchingCubeSurface"
         #pragma target 3.0
 
         sampler2D _MainTex;
+        sampler2D _ColorPalette;
+        float4 _ColorPalette_TexelSize;
 
         struct Input
         {
@@ -53,14 +56,17 @@ Shader "Custom/MarchingCubeSurface"
             float3 normal : NORMAL;
             float2 texcoord;
             float3 worldPos;
+            float4 color;
         };
 
         void vert (inout appdata_full v, out Input o) {
             UNITY_INITIALIZE_OUTPUT(Input, o);
 
             float3 normal;
-            DecodeVertex(v.color, v.vertex.xyz, normal);
+            uint colorIdx;
+            DecodeVertex(v.color, v.vertex.xyz, normal, colorIdx);
 
+            o.color = tex2Dlod(_ColorPalette, float4((colorIdx + 0.5) * _ColorPalette_TexelSize.x, 0.5, 0, 0));
             o.texcoord = v.texcoord;
             o.normal = UnityObjectToWorldNormal(normal);
         }
@@ -124,7 +130,7 @@ Shader "Custom/MarchingCubeSurface"
             // fixed4 c = tex2D (_MainTex, IN.texcoord) * _Color;
 
             float3 roundedNormal = round(IN.normal * _NormalRounding) / _NormalRounding;
-            fixed4 c = TriplanarSampleTest(_MainTex, _MainTex_ST.xy, _MainTex_ST.zw, IN.worldPos, roundedNormal) * _Color;
+            fixed4 c = /*TriplanarSampleTest(_MainTex, _MainTex_ST.xy, _MainTex_ST.zw, IN.worldPos, roundedNormal) **/ IN.color * _Color;
 
             o.Albedo = c.rgb;
             o.Metallic = _Metallic;
@@ -167,8 +173,9 @@ Shader "Custom/MarchingCubeSurface"
 
                 float3 normal;
                 float3 position;
+                uint color;
 
-                DecodeVertex(v.color, position, normal);
+                DecodeVertex(v.color, position, normal, color);
                 
                 TRANSFER_SHADOW_CASTER(o);
                 o.pos = UnityObjectToClipPos(float4(position, 0));
@@ -213,8 +220,9 @@ Shader "Custom/MarchingCubeSurface"
 
                 float3 normal;
                 float3 position;
+                uint color;
 
-                DecodeVertex(v.color, position, normal);
+                DecodeVertex(v.color, position, normal, color);
                 
                 TRANSFER_SHADOW_CASTER(o);
                 o.pos = UnityObjectToClipPos(float4(position, 0));

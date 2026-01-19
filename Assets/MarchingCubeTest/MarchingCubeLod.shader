@@ -39,21 +39,20 @@ Shader "GenerateMesh/MarchingCubeLod"
                 return index;
             }
             
-            float sample(int3 pos)
+            float2 sample(int3 pos) 
             {
                 pos = clamp(pos + 1, 0, _VoxelAmount + 2);
                 
                 uint index = pos.x + pos.y * (_VoxelAmount + 2) + pos.z * (_VoxelAmount + 2) * (_VoxelAmount + 2);
                 uint2 uv = uint2(index % dim.x, index / dim.y);
+                
+                uint value = _Data[uv] * 0xFFFFFF;
 
-                return _Data[uv];
+                float weight = float(value >> 8) / 0xFFFF;
+                float color = (value >> 1) & 0xFF;
+
+                return float2(weight, color);
             }
-
-            /*float sample(int3 pos)
-            {
-                float weight = 1 - distance(pos, _VoxelAmount / 2) * (0.05 + 0.15);
-                return saturate(weight);
-            }*/
 
             v2f vert (appdata_base v)
             {
@@ -61,19 +60,6 @@ Shader "GenerateMesh/MarchingCubeLod"
                 o.pos = UnityObjectToClipPos(v.vertex);
                 o.uv = v.texcoord;
                 return o;
-            }
-
-            float4 EncodeVertex(float3 position, float3 normal)
-            {
-                uint3 qp = uint3(saturate(position) * 0x3FF);
-                uint3 qn = uint3((normalize(normal) * 0.5 + 0.5) * 0x3FF);
-
-                return float4(
-                    (qp.x | (qp.y << 10)) / float(0xFFFFF), 
-                    (qp.z | (qn.x << 10)) / float(0xFFFFF), 
-                    (qn.y | (qn.z << 10)) / float(0xFFFFF), 
-                    1.0
-                );
             }
 
 			float4 frag (v2f IN) : SV_Target
@@ -100,14 +86,14 @@ Shader "GenerateMesh/MarchingCubeLod"
                 mask *= all(gridPos < _VoxelAmount) ? 1.0 : 0.0;
 
                 int i;
-                float cubeData[8];
+                float2 cubeData[8];
                 [unroll] for (i = 0; i < 8; i++)
                     cubeData[i] = sample(gridPos + CornerPositions[i]);
                 
                 // Determine cube configuration based on corner weights
                 uint cubeIndex = 0;
                 [unroll] for (i = 0; i < 8; i++)
-                    cubeIndex |= ((cubeData[i] > 0.5) ? 1u : 0u) << i;
+                    cubeIndex |= ((cubeData[i].r > 0.5) ? 1u : 0u) << i;
 
                 // Skip if the cube is entirely inside or outside the surface
                 mask *= (cubeIndex != 0 && cubeIndex != 0xFF) ? 1.0 : 0.0;
@@ -120,15 +106,16 @@ Shader "GenerateMesh/MarchingCubeLod"
                 int cornerA = EdgeToCornersA[triTableIndex];
                 int cornerB = EdgeToCornersB[triTableIndex];
 
-                float w1 = cubeData[cornerA];
-                float w2 = cubeData[cornerB];
+                float w1 = cubeData[cornerA].r;
+                float w2 = cubeData[cornerB].r;
 
                 float t = (0.5 - w1) / (w2 - w1);
                 float3 offset = lerp(CornerPositions[cornerA], CornerPositions[cornerB], t); // should be saturated
 
                 float3 vertex = gridPos + offset + 0.25;
-
-                return float4(vertex / _VoxelAmount - 0.5, 1.0) * mask;
+                uint color = w1 > w2 ? cubeData[cornerA].g : cubeData[cornerB].g;
+                
+                return float4(vertex / _VoxelAmount - 0.5, (color + 1) / 255.0) * mask;
             } 
             ENDCG
         }
