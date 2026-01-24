@@ -103,7 +103,7 @@ Shader "GenerateMesh/Compact Texels"
 
 				int2 uv = ActiveTexelIndexToUV(UVToIndex(IN.uv * _TargetSize));
 				if (uv.x == -1)
-					return 0;  
+					return 0;
 
 				return _DataTex[uv]; // float4(_DataTex[uv].rgb, 1.0);
 			}
