@@ -22,6 +22,7 @@ namespace VolumetricPens
         private RenderTexture buffer;
         
         private DataDictionary chunks = new DataDictionary();
+        public DataDictionary chunkDict { get => chunks; }
 
         private readonly int VoxelAmount = 40 - 4; // -2 because of the border 
 
@@ -41,7 +42,7 @@ namespace VolumetricPens
         public Material debugCompact; 
         
         private RenderTexture vertexData, compact, mipmapVertex;
-        private const int texDim = 1024;
+        public const int texDim = 1024;
         [HideInInspector, NonSerialized] public readonly int[] Triangles = new int[texDim * texDim];
         [HideInInspector] public bool collision;
         
@@ -80,20 +81,26 @@ namespace VolumetricPens
 
             var tokens = chunks.GetValues();
             for (int i = 0; i < chunks.Count; i++)
+            {
+                if (tokens[i].Reference == null) continue;
                 ((Chunk)tokens[i].Reference).EnableMeshCollider(collision);
+            }
         }
 
         public void Reset()
         {
             var tokens = chunks.GetValues();
             for (int i = 0; i < chunks.Count; i++)
+            {
+                if (tokens[i].Reference == null) continue;
                 Destroy(((Chunk)tokens[i].Reference).gameObject);
+            }
             chunks.Clear();
             gpuUpdateQueue.Clear();
             lod.Reset();
         }
 
-        private bool TryGetChunk(ulong key, out Chunk chunk)
+        public bool TryGetChunk(ulong key, out Chunk chunk)
         {
             if (chunks.TryGetValue(key, out DataToken token))
             {
@@ -101,9 +108,11 @@ namespace VolumetricPens
                 return true;
             }
 
+            Debug.Log($"[{nameof(MarchingCubeSystem)}] {nameof(TryGetChunk)}({key}, {null}) Chunk nonexistent, creating new chunk...");
+
             chunk = Chunk.Create(this, key);
             chunks.SetValue(key, chunk);
-            
+
             return true;
         }
 
@@ -152,6 +161,8 @@ namespace VolumetricPens
                 lod.UpdateLOD(chunk);
 
                 chunk.UpdateMesh();
+
+                chunk.hasBeenSynced = true;
             }
 
             int blockCount = chunks.Count;
@@ -167,7 +178,9 @@ namespace VolumetricPens
             Gizmos.color = Color.white;
 
             foreach (var key in chunks.GetKeys())
+            {
                 Gizmos.DrawWireCube(Chunk.ToPos(key.ULong), Vector3.one);
+            }
 
             Gizmos.matrix = oldMatrix;
         }
