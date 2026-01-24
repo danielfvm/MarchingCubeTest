@@ -14,6 +14,10 @@ public class Chunk : UdonSharpBehaviour
 
     public ulong key;
 
+    public double lastUpdated = 0;
+    public bool hasBeenSynced = false;
+    public double lastSyncedUpdated = 0;
+
     public static Chunk Create(MarchingCubeSystem system, ulong key)
     {
         Chunk chunk = Instantiate(system.chunkPrefab.gameObject, system.transform).GetComponent<Chunk>();
@@ -49,7 +53,7 @@ public class Chunk : UdonSharpBehaviour
         }
 
         #if UNITY_EDITOR
-        name = "Chunk " + transform.localPosition;
+        name = $"Chunk {transform.localPosition}, {key}";
         #endif
     }
 
@@ -72,6 +76,7 @@ public class Chunk : UdonSharpBehaviour
     public void UpdateMesh()
     {
         system.GenerateMesh(this, 1);
+        lastUpdated = Networking.GetServerTimeInSeconds();
     }
 
     public Vector3 GetCoord()
