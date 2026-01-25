@@ -1,4 +1,4 @@
-Shader "GenerateMesh/Compact Texels"
+Shader "VolumetricPen/IndexLookup"
 {
     SubShader
     {
@@ -11,7 +11,6 @@ Shader "GenerateMesh/Compact Texels"
 
             #include "UnityCG.cginc"
 
-            Texture2D<uint4> _DataTex;
 			Texture2D<float4> _ActiveTexelMap;
             uint2 _TargetSize;
             uint _MaxLod;
@@ -96,15 +95,21 @@ Shader "GenerateMesh/Compact Texels"
 
 			uint4 frag (v2f IN) : SV_Target
 			{
+                uint2 uv = IN.uv * _TargetSize;
+                uint index = uv.x + uv.y * WIDTH;
+
+                // TODO: Compute new index
+
+                /*
 				if (all(IN.uv * WIDTH >= WIDTH - 1)) {
 					return CountActiveTexels(int3(0, 0, _MaxLod), 0);
 				}
 
 				int2 uv = ActiveTexelIndexToUV(UVToIndex(IN.uv * _TargetSize));
 				if (uv.x == -1)
-					return 0;
+					return 0;*/
 
-				return _DataTex[uv];
+				return index; // float4(_DataTex[uv].rgb, 1.0);
 			}
 
             ENDCG

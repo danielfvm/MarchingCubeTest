@@ -12,7 +12,7 @@ Shader "GenerateMesh/Write Active Texels"
 
             #include "UnityCG.cginc"
 
-            Texture2D<float4> _DataTex;
+            Texture2D<uint4> _DataTex;
             
             struct v2f
 			{
