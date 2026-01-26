@@ -1,6 +1,5 @@
 ﻿
 using System;
-using BestHTTP.SecureProtocol.Org.BouncyCastle.Ocsp;
 using UdonSharp;
 using UnityEngine;
 using UnityEngine.UI;
@@ -180,10 +179,10 @@ public class DualContouringGenerator : UdonSharpBehaviour
                 return;
 
             int len = BitConverter.ToInt32(indexReadback, indexReadback.Length - 4);
-            int[] indices = new int[len];
-            Buffer.BlockCopy(indexReadback, 0, indices, 0, len * 4);
+            int[] indices = new int[len * 4];
+            Buffer.BlockCopy(indexReadback, 0, indices, 0, len * 4 * 4);
 
-          //  mesh.SetIndices(indices, MeshTopology.Points, 0, false);
+            mesh.SetIndices(indices, MeshTopology.Quads, 0, false);
 
             Debug.Log("Result: " + indices[0] + " Len: " + indices.Length);
             text.text = "Result: " + indices[0] + " Len: " + indices.Length;

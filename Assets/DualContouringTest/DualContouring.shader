@@ -76,9 +76,10 @@ Shader "VolumetricPen/DualContouring"
 
     float getWeight(float3 coord)
     {
-        return sdBox(ApplyRotation(float4(coord - 30.0, 0.0), float3(30.0, 0.0, 45.0)).xyz, 5.0);
+        //return sdBox(ApplyRotation(float4(coord - 30.0, 0.0), float3(30.0, 0.0, 45.0)).xyz, 5.0);
+        //return sdBox(coord - 30.0, 5.0);
 
-        //return 1.0 - distance(coord, 32) * 0.04;
+        return distance(coord, 32) * 0.08 - 2.0;
     }
 
     float3 getNormal(float3 coord)
@@ -91,16 +92,6 @@ Shader "VolumetricPen/DualContouring"
         ));
     }
 
-    static const float3 CornerPositions[8] = {
-        float3(0, 0, 0),
-        float3(1, 0, 0),
-        float3(1, 1, 0),
-        float3(0, 1, 0),
-        float3(0, 0, 1),
-        float3(1, 0, 1),
-        float3(1, 1, 1),
-        float3(0, 1, 1)
-    };
     ENDCG
 
     SubShader
@@ -172,7 +163,7 @@ Shader "VolumetricPen/DualContouring"
                 mean /= mass;
 
                 float _det = det(row);
-                if (abs(_det) < 1e-6)
+                if (abs(_det) < 1e-3)
                     return float4(mean / 64.0, 0.0);
 
                 float3 c0 = cross(row[1], row[2]);
@@ -204,11 +195,28 @@ Shader "VolumetricPen/DualContouring"
             {
                 uint2 dim;
                 dim = 512; // _IndexLookup.GetDimensions(dim.x, dim.y); // TODO: Why does GetDimension not work?
-                int idx = pos.x | (pos.y << 6) | (pos.z << 12);
+                uint idx = pos.x | (pos.y << 6) | (pos.z << 12);
                 uint2 uv = uint2(idx % dim.x, idx / dim.x);
 
                 return _IndexLookup[uv].r;
             }
+            
+            uint4 swap(uint4 data, bool swap)
+            {
+                return swap ? data : data.wzyx;
+            }
+
+            static const uint3 lookup[3] = {
+                uint3(1, 0, 0),
+                uint3(0, 0, 1),
+                uint3(0, 1, 0) 
+            };
+
+            static const uint4 offset[3] = {
+                uint4(0, 0, 0, 0),
+                uint4(1, 0, 0, 1),
+                uint4(1, 1, 0, 0)
+            };
 
             uint4 frag (v2f IN) : SV_Target
             {
@@ -222,24 +230,37 @@ Shader "VolumetricPen/DualContouring"
                 int3 gridPos = int3(index & 0x3F, (index >> 6) & 0x3F, (index >> 12) & 0x3F);                
                 
                 uint2 localUV = IN.uv * 2.0 * _Dim - uv * 2;
-                int localIndex = localUV.x + localUV.y * 2;
+                uint localIndex = localUV.x + localUV.y * 2;
                 float iso = 0.0;
 
-                // TODO: Make branchless
-                // TODO: Original also swaps faces (probably for correct face culling)
-                bool solid1 = getWeight(gridPos + uint3(0, 0, 0)) > iso;
+                bool solid1 = getWeight(gridPos) > iso;
+                bool solid2 = getWeight(gridPos + lookup[localIndex]) > iso;
+                bool face = solid1 != solid2 && localIndex < 3;
+
+                uint a = localIndex;
+                uint b = (localIndex + 1) % 3;
+                uint c = (localIndex + 2) % 3;
+
+                return swap(uint4(
+                    getIndex(gridPos - uint3(offset[a].x, offset[b].x, offset[c].x)),
+                    getIndex(gridPos - uint3(offset[a].y, offset[b].y, offset[c].y)),
+                    getIndex(gridPos - uint3(offset[a].z, offset[b].z, offset[c].z)),
+                    getIndex(gridPos - uint3(offset[a].w, offset[b].w, offset[c].w))
+                ), solid2) * face;
+
+                /*bool solid1 = getWeight(gridPos + uint3(0, 0, 0)) > iso;
                 [forcecase] switch(localIndex) {
                     case 0:
                         if (gridPos.x > 0 || gridPos.y > 0) {
                             bool solid2 = getWeight(gridPos + uint3(0, 0, 1)) > iso;
 
                             if (solid1 != solid2) {
-                                return uint4(
+                                return swap(uint4(
                                     getIndex(gridPos - uint3(1, 1, 0)),
                                     getIndex(gridPos - uint3(0, 1, 0)),
                                     getIndex(gridPos - uint3(0, 0, 0)),
                                     getIndex(gridPos - uint3(1, 0, 0))
-                                );
+                                ), solid2);
                             }
                         }
                         break;
@@ -248,12 +269,12 @@ Shader "VolumetricPen/DualContouring"
                             bool solid2 = getWeight(gridPos + uint3(0, 1, 0)) > iso;
 
                             if (solid1 != solid2) {
-                                return uint4(
+                                return swap(uint4(
                                     getIndex(gridPos - uint3(1, 0, 1)),
                                     getIndex(gridPos - uint3(0, 0, 1)),
                                     getIndex(gridPos - uint3(0, 0, 0)),
                                     getIndex(gridPos - uint3(1, 0, 0))
-                                );
+                                ), solid1); // for some reason solid1 here
                             }
                         }
                         break;
@@ -262,12 +283,12 @@ Shader "VolumetricPen/DualContouring"
                             bool solid2 = getWeight(gridPos + uint3(1, 0, 0)) > iso;
 
                             if (solid1 != solid2) {
-                                return uint4(
+                                return swap(uint4(
                                     getIndex(gridPos - uint3(0, 1, 1)),
                                     getIndex(gridPos - uint3(0, 0, 1)),
                                     getIndex(gridPos - uint3(0, 0, 0)),
                                     getIndex(gridPos - uint3(0, 1, 0))
-                                );
+                                ), solid2);
                             }
                         }
                         break;
@@ -275,7 +296,7 @@ Shader "VolumetricPen/DualContouring"
                         return 0;
                 }
 
-                return 0;
+                return 0;*/
             }
             ENDCG
         }

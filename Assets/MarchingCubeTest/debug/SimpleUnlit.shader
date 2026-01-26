@@ -14,8 +14,6 @@ Shader "Unlit/SimpleUnlit"
             CGPROGRAM
             #pragma vertex vert
             #pragma fragment frag
-            // make fog work
-            #pragma multi_compile_fog
 
             #include "UnityCG.cginc"
 
@@ -28,29 +26,26 @@ Shader "Unlit/SimpleUnlit"
             struct v2f
             {
                 float2 uv : TEXCOORD0;
-                UNITY_FOG_COORDS(1)
                 float4 vertex : SV_POSITION;
             };
 
-            sampler2D _MainTex;
-            float4 _MainTex_ST;
+            Texture2D<uint4> _MainTex;
+            float4 _MainTex_TexelSize;
 
             v2f vert (appdata v)
             {
                 v2f o;
                 o.vertex = UnityObjectToClipPos(v.vertex);
-                o.uv = TRANSFORM_TEX(v.uv, _MainTex);
-                UNITY_TRANSFER_FOG(o,o.vertex);
+                o.uv = v.uv;
                 return o;
             }
 
             fixed4 frag (v2f i) : SV_Target
             {
+                return any(_MainTex[i.uv * _MainTex_TexelSize.zw].rgb > 0) ? 1 : 0;
                 // sample the texture
-                fixed4 col = tex2D(_MainTex, i.uv);
-                // apply fog
-                UNITY_APPLY_FOG(i.fogCoord, col);
-                return col;
+                //fixed4 col = tex2D(_MainTex, i.uv);
+                //return any(col.rgb > 0.0) ? 1 : 0;
             }
             ENDCG
         }

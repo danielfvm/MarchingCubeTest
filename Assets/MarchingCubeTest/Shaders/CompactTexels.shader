@@ -34,11 +34,6 @@ Shader "GenerateMesh/Compact Texels"
             #define WIDTH _TargetSize.x //((uint)_ActiveTexelMap_TexelSize.z)
 			#define HEIGHT _TargetSize.y //((uint)_ActiveTexelMap_TexelSize.w)
 
-			inline uint2 IndexToUV(uint index)
-			{
-				return uint2(index % HEIGHT, index / HEIGHT);
-			}
-
 			inline uint UVToIndex(uint2 uv)
 			{
 				return uv.x + uv.y * WIDTH;
@@ -89,16 +84,10 @@ Shader "GenerateMesh/Compact Texels"
 				return uv.xy;
 			}
 
-			float3 rgb_to_srgb(float3 c) {
-				bool3 cutoff = clamp(c - 0.04045, 0, 1);
-				return lerp(c / 12.92, pow(((c + 0.055) / 1.055), 2.4), cutoff);
-			}
-
 			uint4 frag (v2f IN) : SV_Target
 			{
-				if (all(IN.uv * WIDTH >= WIDTH - 1)) {
+				if (all(IN.uv * WIDTH >= WIDTH - 1))
 					return CountActiveTexels(int3(0, 0, _MaxLod), 0);
-				}
 
 				int2 uv = ActiveTexelIndexToUV(UVToIndex(IN.uv * _TargetSize));
 				if (uv.x == -1)
