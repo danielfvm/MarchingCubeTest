@@ -4896,7 +4896,7 @@ MeshRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 10302, guid: 0000000000000000f000000000000000, type: 0}
+  - {fileID: 2100000, guid: 47de24fb5ec77661c9cc29c9d3c5c42c, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -4978,6 +4978,7 @@ MonoBehaviour:
   matLookup: {fileID: 2100000, guid: 501dafa193d70e64cb7359119638466f, type: 2}
   meshFilter: {fileID: 2056089929}
   text: {fileID: 34985667}
+  triangles: 1
 --- !u!4 &2056089933
 Transform:
   m_ObjectHideFlags: 0
@@ -5230,7 +5231,7 @@ MonoBehaviour:
   - {fileID: 2100000, guid: 5c2f18079e80c2ada942ddcb691e30d8, type: 2}
   - {fileID: 2100000, guid: 37ebfde8274ea73d8826c8eb2bef1134, type: 2}
   - {fileID: 2100000, guid: dd1c4e0932a2b35ff91bb833033a1d74, type: 2}
-  - {fileID: 10302, guid: 0000000000000000f000000000000000, type: 0}
+  - {fileID: 2100000, guid: 47de24fb5ec77661c9cc29c9d3c5c42c, type: 2}
   - {fileID: 2100000, guid: 2f81f0e46a93996488b9a87cd4785466, type: 2}
   LightMapsNear: []
   LightMapsFar: []

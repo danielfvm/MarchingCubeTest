@@ -87,6 +87,12 @@ public class DualContouringGenerator : UdonSharpBehaviour
             Triangles[i] = i;
     }
 
+    public void Update()
+    {
+        if (Input.GetKey(KeyCode.F))
+            Generate();    
+    }
+
     public void Generate()
     {
 
@@ -96,7 +102,8 @@ public class DualContouringGenerator : UdonSharpBehaviour
 
         // Compute Vertices
         {
-            matDualContouring.SetTexture("_Data", weightData);
+            matDualContouring.SetFloat("_UdonTime", Time.time);
+            matDualContouring.SetTexture("_DataTex", weightData);
             VRCGraphics.Blit(null, vertexData, matDualContouring, passVertices);
 
             matWriteActiveTexels.SetTexture("_DataTex", vertexData);
@@ -119,14 +126,12 @@ public class DualContouringGenerator : UdonSharpBehaviour
             debugVertexData.SetTexture("_MainTex", vertexData);
             debugActiveVertexData.SetTexture("_MainTex", activeVertexData);
             debugCompactVertexData.SetTexture("_MainTex", compactVertexData);
-
-            VRCAsyncGPUReadback.Request(compactVertexData, 0, (IUdonEventReceiver)this);
         }
 
         // Compute Indices
         {
             matDualContouring.SetTexture("_IndexLookup", indexLookupData);
-            matDualContouring.SetTexture("_Data", weightData);
+            matDualContouring.SetTexture("_DataTex", weightData);
             VRCGraphics.Blit(null, indexData, matDualContouring, passIndices);
 
             matWriteActiveTexels.SetTexture("_DataTex", indexData);
@@ -144,11 +149,14 @@ public class DualContouringGenerator : UdonSharpBehaviour
             debugActiveIndexData.SetTexture("_MainTex", activeIndexData);
             debugCompactIndexData.SetTexture("_MainTex", compactIndexData);
 
+
+            VRCAsyncGPUReadback.Request(compactVertexData, 0, (IUdonEventReceiver)this);
             VRCAsyncGPUReadback.Request(compactIndexData, 0, (IUdonEventReceiver)this);
         }
     }
 
     bool vertex;
+    public bool triangles = true;
 
     public override void OnAsyncGpuReadbackComplete(VRCAsyncGPUReadbackRequest request)
     {
@@ -162,16 +170,20 @@ public class DualContouringGenerator : UdonSharpBehaviour
 
             Debug.Log("Vertices: " + len);
 
-            Vector3[] vertices = new Vector3[len];
-            int[] triangles = new int[len];
-            Array.Copy(Triangles, triangles, len);
+            //Vector3[] vertices = new Vector3[len];
+            //int[] triangles = new int[len];
+            //Array.Copy(Triangles, triangles, len);
 
-            for (int i = 0; i < len; i++)
-                vertices[i] = new Vector3(vertexReadback[i].r, vertexReadback[i].g, vertexReadback[i].b);
+            Color[] colors = new Color[len];
+            Array.Copy(vertexReadback, colors, len);
             
-            mesh.SetVertices(vertices, 0, len, UnityEngine.Rendering.MeshUpdateFlags.DontRecalculateBounds);
-            //mesh.SetColors(colors, 0, len, UnityEngine.Rendering.MeshUpdateFlags.DontRecalculateBounds);
-            mesh.SetIndices(triangles, MeshTopology.Points, 0, false);
+            //for (int i = 0; i < len; i++)
+            //    vertices[i] = new Vector3(vertexReadback[i].r, vertexReadback[i].g, vertexReadback[i].b);
+            
+            //mesh.SetVertices(vertices, 0, len, UnityEngine.Rendering.MeshUpdateFlags.DontRecalculateBounds);
+            mesh.SetVertices(new Vector3[len], 0, len, UnityEngine.Rendering.MeshUpdateFlags.DontRecalculateBounds);
+            mesh.SetColors(colors, 0, len, UnityEngine.Rendering.MeshUpdateFlags.DontRecalculateBounds);
+            //mesh.SetIndices(triangles, MeshTopology.Points, 0, false);
         }
         else
         {
@@ -182,10 +194,14 @@ public class DualContouringGenerator : UdonSharpBehaviour
             int[] indices = new int[len * 4];
             Buffer.BlockCopy(indexReadback, 0, indices, 0, len * 4 * 4);
 
-            mesh.SetIndices(indices, MeshTopology.Quads, 0, false);
+            if (triangles)
+            {
+                mesh.SetIndices(indices, MeshTopology.Quads, 0, false);
+               // mesh.RecalculateNormals();
+            }
 
-            Debug.Log("Result: " + indices[0] + " Len: " + indices.Length);
-            text.text = "Result: " + indices[0] + " Len: " + indices.Length;
+            Debug.Log("Len: " + indices.Length);
+            text.text = "Len: " + indices.Length;
         }
     }
 }

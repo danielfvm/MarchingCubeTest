@@ -37,6 +37,7 @@ Shader "Custom/MarchingCubeSurface"
     SubShader
     {
         Tags { "RenderType"="Opaque" }
+        Cull Back
         LOD 200
 
         CGPROGRAM
@@ -132,6 +133,11 @@ Shader "Custom/MarchingCubeSurface"
             float3 roundedNormal = round(IN.normal * _NormalRounding) / _NormalRounding;
             fixed4 c = /*TriplanarSampleTest(_MainTex, _MainTex_ST.xy, _MainTex_ST.zw, IN.worldPos, roundedNormal) **/ IN.color * _Color;
 
+            float3 dpdx = ddx(IN.worldPos);
+            float3 dpdy = ddy(IN.worldPos);
+
+            float3 normalWS = -normalize(cross(dpdx, dpdy));
+
             o.Albedo = c.rgb;
             o.Metallic = _Metallic;
             o.Smoothness = _Glossiness;
@@ -140,57 +146,6 @@ Shader "Custom/MarchingCubeSurface"
         }
         ENDCG
 
-        Pass
-        {
-            Name "BlockView"
-            Tags { "RenderType"="Opaque" }
-
-            ZWrite On
-            ZTest LEqual
-            Cull Front
-
-            CGPROGRAM
-            #pragma vertex vert
-            #pragma fragment frag
-            #pragma target 2.0
-            
-            #include "UnityCG.cginc"
-            #include "AutoLight.cginc"
-            #include "UnityLightingCommon.cginc"
-
-            fixed4 _Color;
-
-            struct v2f
-            {
-                float4 pos : SV_POSITION;
-                float3 normal : TEXCOORD0;
-            };
-
-            // Custom deformation logic
-            v2f vert(appdata_full v)
-            { 
-                v2f o;
-
-                float3 normal;
-                float3 position;
-                uint color;
-
-                DecodeVertex(v.color, position, normal, color);
-                
-                TRANSFER_SHADOW_CASTER(o);
-                o.pos = UnityObjectToClipPos(float4(position, 0));
-                o.normal = normal;
-
-                return o;
-            }
-
-            float4 frag(v2f i) : SV_Target
-            {
-                fixed3 color = _Color.rgb * (_LightColor0.rgb * 0.1); // add ambient
-                return fixed4(color, 1);
-            }
-            ENDCG
-        }
 
         Pass
         {

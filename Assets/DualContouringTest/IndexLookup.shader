@@ -11,7 +11,8 @@ Shader "VolumetricPen/IndexLookup"
 
             #include "UnityCG.cginc"
 
-			Texture2D<float4> _ActiveTexelMap;
+			Texture2D<float> _ActiveTexelMap;
+
             uint2 _TargetSize;
             uint _MaxLod;
 
@@ -43,21 +44,23 @@ Shader "VolumetricPen/IndexLookup"
 
 			uint frag (v2f IN) : SV_Target
 			{
-                uint3 uv = uint3(IN.uv * 512, 0);
+                uint2 dim;
+                _ActiveTexelMap.GetDimensions(dim.x, dim.y);
+                uint3 uv = uint3(IN.uv * dim, 0);
                 uint index = 0;
 
-                while (uv.z < _MaxLod && uv.z < 14) {
-					uv.xy /= 2;
-					uv.z ++; 
+                if (!any(_ActiveTexelMap.Load(uv, 0)))
+                    return 0;
 
+                // The extra <= 10 condition is to prevents shader to crash
+                while (uv.z < _MaxLod  && uv.z <= 10) {
 					uint subIndex = (uv.x & 0x1) | ((uv.y & 0x1) << 1);
 					[unroll(3)] for (uint j = 0; j < subIndex; j++)
 						index += CountActiveTexels(uint3(uv.xy & ~0x1, uv.z), zOrder[j]);
-				}
 
-                //index = uv.x + uv.y * 512;
-               // int3 pos = int3(index & 0x3F, (index >> 6) & 0x3F, (index >> 12) & 0x3F);  
-               // uint idx = pos.x | (pos.y << 6) | (pos.z << 12);
+					uv.xy /= 2;
+					uv.z ++; 
+				}
 
 				return index;
 			}

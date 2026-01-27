@@ -9,8 +9,9 @@ Shader "VolumetricPen/DualContouring"
         float4 vertex : SV_POSITION;
     };
 
-    Texture2D<uint> _Data;
-    Texture2D<uint> _IndexLookup; // TODO: try getting uint to work instead
+    Texture2D<uint> _DataTex;
+    Texture2D<uint> _IndexLookup;
+    float _UdonTime;
 
     v2f vert (appdata_base v)
     {
@@ -79,7 +80,10 @@ Shader "VolumetricPen/DualContouring"
         //return sdBox(ApplyRotation(float4(coord - 30.0, 0.0), float3(30.0, 0.0, 45.0)).xyz, 5.0);
         //return sdBox(coord - 30.0, 5.0);
 
-        return distance(coord, 32) * 0.08 - 2.0;
+        return min(
+            sdBox(ApplyRotation(float4(coord - 30.0, 0.0), float3(30.0, 0.0, 45.0)).xyz, 5.0),
+            max(2.0 - distance(coord, float3(16, 16 + sin(_UdonTime) * 6, 16)) * 0.08, distance(coord, 32) * 0.08 - 2.0)
+        );
     }
 
     float3 getNormal(float3 coord)
@@ -102,6 +106,7 @@ Shader "VolumetricPen/DualContouring"
             CGPROGRAM
             #pragma vertex vert
             #pragma fragment frag
+            #pragma target 5.0
 
             void addEdge(float3 pos, inout float3x3 row, inout float mass, inout float3 mean, inout float3 atb)
             {
@@ -120,12 +125,24 @@ Shader "VolumetricPen/DualContouring"
                 return (0.0 - v0) / (v1 - v0);
             }
 
+
+            float4 EncodeVertex(float3 position, float3 normal, uint color)
+            {
+                uint3 qp = uint3(saturate(position) * 0x3FF);
+                uint3 qn = uint3((normalize(normal) * 0.5 + 0.5) * 0x3FF);
+
+                return float4(
+                    (qp.x | (qp.y << 10)) / float(0xFFFFF), 
+                    (qp.z | (qn.x << 10)) / float(0xFFFFF), 
+                    (qn.y | (qn.z << 10)) / float(0xFFFFF), 
+                    float(color) / float(0xFFFFF)
+                );
+            }
+
             float4 frag (v2f IN) : SV_Target
             {
                 uint2 _Dim;
-                _Data.GetDimensions(_Dim.x, _Dim.y);
-
-                _Dim = 512;
+                _DataTex.GetDimensions(_Dim.x, _Dim.y);
 
                 uint2 uv = IN.uv * _Dim;
                 uint index = uv.x + uv.y * _Dim.x;
@@ -163,8 +180,6 @@ Shader "VolumetricPen/DualContouring"
                 mean /= mass;
 
                 float _det = det(row);
-                if (abs(_det) < 1e-3)
-                    return float4(mean / 64.0, 0.0);
 
                 float3 c0 = cross(row[1], row[2]);
                 float3 c1 = cross(row[2], row[0]);
@@ -172,14 +187,13 @@ Shader "VolumetricPen/DualContouring"
 
                 float3 vertex = float3(dot(c0, atb), dot(c1, atb), dot(c2, atb)) / _det;
 
-                //vertex = clamp(vertex, gridPos, gridPos + 1);
+                if (abs(_det) < 1e-3)
+                    vertex = mean;
 
-                if (any(vertex <= gridPos) || any(vertex >= gridPos + 1))
-                    return float4(mean / 64.0, 0.0);//float4((vertex * 0.5 + mean * 0.5) / 64.0, 0.0);
+                //if (any(vertex <= gridPos) || any(vertex >= gridPos + 1))
+                //    vertex = mean;//float4((vertex * 0.5 + mean * 0.5), 0.0);
 
-                // TODO: Bounds check
-
-                return float4(float3(vertex) / 64.0, 0.0);
+                return EncodeVertex(vertex / 64.0, getNormal(vertex), 5); //float4(vertex / 64.0 - 0.5, 0.0);
             }
             ENDCG
         }
@@ -190,11 +204,12 @@ Shader "VolumetricPen/DualContouring"
             CGPROGRAM
             #pragma vertex vert
             #pragma fragment frag
+            #pragma target 5.0
 
             uint getIndex(uint3 pos)
             {
                 uint2 dim;
-                dim = 512; // _IndexLookup.GetDimensions(dim.x, dim.y); // TODO: Why does GetDimension not work?
+                _IndexLookup.GetDimensions(dim.x, dim.y);
                 uint idx = pos.x | (pos.y << 6) | (pos.z << 12);
                 uint2 uv = uint2(idx % dim.x, idx / dim.x);
 
@@ -221,9 +236,7 @@ Shader "VolumetricPen/DualContouring"
             uint4 frag (v2f IN) : SV_Target
             {
                 uint2 _Dim;
-                _Data.GetDimensions(_Dim.x, _Dim.y);
-
-                _Dim = 512;
+                _DataTex.GetDimensions(_Dim.x, _Dim.y);
 
                 uint2 uv = IN.uv * _Dim;
                 uint index = uv.x + uv.y * _Dim.x;
@@ -235,18 +248,18 @@ Shader "VolumetricPen/DualContouring"
 
                 bool solid1 = getWeight(gridPos) > iso;
                 bool solid2 = getWeight(gridPos + lookup[localIndex]) > iso;
-                bool face = solid1 != solid2 && localIndex < 3;
+                bool face = solid1 != solid2 && localIndex < 3 && all(gridPos > 0);
 
                 uint a = localIndex;
                 uint b = (localIndex + 1) % 3;
                 uint c = (localIndex + 2) % 3;
 
-                return swap(uint4(
+                return face * swap(uint4(
                     getIndex(gridPos - uint3(offset[a].x, offset[b].x, offset[c].x)),
                     getIndex(gridPos - uint3(offset[a].y, offset[b].y, offset[c].y)),
                     getIndex(gridPos - uint3(offset[a].z, offset[b].z, offset[c].z)),
                     getIndex(gridPos - uint3(offset[a].w, offset[b].w, offset[c].w))
-                ), solid2) * face;
+                ), solid2);
 
                 /*bool solid1 = getWeight(gridPos + uint3(0, 0, 0)) > iso;
                 [forcecase] switch(localIndex) {

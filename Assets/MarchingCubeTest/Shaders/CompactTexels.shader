@@ -12,7 +12,7 @@ Shader "GenerateMesh/Compact Texels"
             #include "UnityCG.cginc"
 
             Texture2D<uint4> _DataTex;
-			Texture2D<float4> _ActiveTexelMap;
+			Texture2D<float> _ActiveTexelMap;
             uint2 _TargetSize;
             uint _MaxLod;
 			bool _IsIndex;
