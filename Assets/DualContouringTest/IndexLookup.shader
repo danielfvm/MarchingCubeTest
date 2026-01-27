@@ -30,9 +30,9 @@ Shader "VolumetricPen/IndexLookup"
                 return o;
             }
 
-			inline float CountActiveTexels(int3 uv, int2 offset)
+			inline uint CountActiveTexels(int3 uv, int2 offset)
 			{
-				return (float)(1 << (uv.z + uv.z)) * _ActiveTexelMap.Load(uv, offset);
+				return (uint)((1 << (uv.z + uv.z)) * _ActiveTexelMap.Load(uv, offset));
 			}
 
 			static const uint2 zOrder[3] = {
@@ -41,19 +41,23 @@ Shader "VolumetricPen/IndexLookup"
 				uint2(0, 1)
 			};
 
-			uint4 frag (v2f IN) : SV_Target
+			uint frag (v2f IN) : SV_Target
 			{
                 uint3 uv = uint3(IN.uv * 512, 0);
                 uint index = 0;
 
-                while (uv.z < _MaxLod && uv.z < 12) {
-					uv.xy >>= 1;
-					uv.z ++;
+                while (uv.z < _MaxLod && uv.z < 14) {
+					uv.xy /= 2;
+					uv.z ++; 
 
 					uint subIndex = (uv.x & 0x1) | ((uv.y & 0x1) << 1);
 					[unroll(3)] for (uint j = 0; j < subIndex; j++)
 						index += CountActiveTexels(uint3(uv.xy & ~0x1, uv.z), zOrder[j]);
 				}
+
+                //index = uv.x + uv.y * 512;
+               // int3 pos = int3(index & 0x3F, (index >> 6) & 0x3F, (index >> 12) & 0x3F);  
+               // uint idx = pos.x | (pos.y << 6) | (pos.z << 12);
 
 				return index;
 			}

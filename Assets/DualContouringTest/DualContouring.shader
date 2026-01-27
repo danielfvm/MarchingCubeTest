@@ -10,7 +10,7 @@ Shader "VolumetricPen/DualContouring"
     };
 
     Texture2D<uint> _Data;
-    Texture2D<uint4> _IndexLookup; // TODO: try getting uint to work instead
+    Texture2D<uint> _IndexLookup; // TODO: try getting uint to work instead
 
     v2f vert (appdata_base v)
     {
@@ -198,7 +198,7 @@ Shader "VolumetricPen/DualContouring"
                 uint idx = pos.x | (pos.y << 6) | (pos.z << 12);
                 uint2 uv = uint2(idx % dim.x, idx / dim.x);
 
-                return _IndexLookup[uv].r;
+                return _IndexLookup[uv];
             }
             
             uint4 swap(uint4 data, bool swap)

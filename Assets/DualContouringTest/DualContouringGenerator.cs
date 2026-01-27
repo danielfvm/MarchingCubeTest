@@ -65,7 +65,7 @@ public class DualContouringGenerator : UdonSharpBehaviour
 
         // Index - each pixel contains a quad. At max 3 quads per voxel => 2x2 (-1 unused)
         {
-            indexLookupData = new RenderTexture(512, 512, 0, RenderTextureFormat.ARGBFloat); // RFloat would be enough, but idk if it works
+            indexLookupData = new RenderTexture(512, 512, 0, RenderTextureFormat.RFloat); // RFloat would be enough, but idk if it works
             indexLookupData.filterMode = FilterMode.Point;
             indexLookupData.Create();
 

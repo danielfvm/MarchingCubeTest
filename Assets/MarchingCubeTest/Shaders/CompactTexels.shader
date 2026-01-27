@@ -15,6 +15,7 @@ Shader "GenerateMesh/Compact Texels"
 			Texture2D<float4> _ActiveTexelMap;
             uint2 _TargetSize;
             uint _MaxLod;
+			bool _IsIndex;
 
 			struct v2f
 			{
