@@ -80,10 +80,12 @@ Shader "VolumetricPen/DualContouring"
         //return sdBox(ApplyRotation(float4(coord - 30.0, 0.0), float3(30.0, 0.0, 45.0)).xyz, 5.0);
         //return sdBox(coord - 30.0, 5.0);
 
-        return min(
-            sdBox(ApplyRotation(float4(coord - 30.0, 0.0), float3(30.0, 0.0, 45.0)).xyz, 5.0),
-            max(2.0 - distance(coord, float3(16, 16 + sin(_UdonTime) * 6, 16)) * 0.08, distance(coord, 32) * 0.08 - 2.0)
-        );
+        float box = sdBox(ApplyRotation(float4(coord - 30.0, 0.0), float3(30.0, 0.0, 45.0)).xyz, 5.0);
+        float sphere_one = (distance(coord, 32) * 0.08) - 2.0;
+        // float cutout_sphere = (distance(coord, float3(16, 16, 16) + float3(0, sin(_UdonTime) * 6, 0)) * 0.08) - 2.0;
+        float cutout_sphere = (distance(coord, float3(16, 16, 16) + float3(0, 6, 0)) * 0.08) - 2.0;
+
+        return min(box, max(sphere_one, -cutout_sphere));
     }
 
     float3 getNormal(float3 coord)
