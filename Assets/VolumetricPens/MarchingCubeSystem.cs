@@ -235,7 +235,7 @@ namespace VolumetricPens
                 return;
             }
 
-            int len = (int)tempData[tempData.Length - 1].r;
+            int len = BitConverter.SingleToInt32Bits(tempData[tempData.Length - 1].r);
 
             if (len % 3 != 0 || len >= tempData.Length)
             {
@@ -250,6 +250,8 @@ namespace VolumetricPens
 
             var colors = new Color[len];
             Array.Copy(tempData, colors, len);
+
+            Debug.Log(len);
 
             int[] triangles = new int[len];
             Array.Copy(Triangles, triangles, len);
