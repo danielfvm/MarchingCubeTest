@@ -9,15 +9,19 @@ public static class DataBlockExt
 
     public static void GenerateLod(this DataBlock block)
     {
-        LodSystem lod = block.GetSystem().lod;
+        MarchingCubeSystem system = block.GetSystem();
+        LodSystem lod = system.lod;
         RenderTexture[] datas = block.GetData();
+        int voxelAmount = system.VoxelAmount;
 
         for (int i = 1; i < datas.Length; i++)
         {
-            lod.matMipMapLod.SetInteger("_VoxelAmount", 40);
+            lod.matMipMapLod.SetInteger("_VoxelAmount", voxelAmount);
             lod.matMipMapLod.SetTexture("_PrevData", datas[i - 1]);
             lod.matMipMapLod.SetVector("_TargetSize", new Vector2(datas[i].width, datas[i].height));
             VRCGraphics.Blit(null, datas[i], lod.matMipMapLod);
+
+            voxelAmount >>= 1;
         }
     }
 

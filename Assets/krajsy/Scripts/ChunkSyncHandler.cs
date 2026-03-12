@@ -61,7 +61,7 @@ namespace VolumetricPens
 
         public void CustomUpdate()
         {
-            DataList existingChunks = system.chunkDict.GetValues();
+           /* DataList existingChunks = system.chunkDict.GetValues();
 
             if (existingChunks.Count <= 0)
             {
@@ -86,7 +86,7 @@ namespace VolumetricPens
             // selectedChunk
             VRCAsyncGPUReadback.Request(selectedChunk.data, 0, (IUdonEventReceiver)this);
 
-            currentChunkIndex++;
+            currentChunkIndex++;*/
             // SendCustomEventDelayedFrames(nameof(CustomUpdate), 1);
             // RequestSerialization();
         }
