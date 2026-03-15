@@ -23,35 +23,45 @@ namespace VolumetricPens
         [UdonSynced] public ulong selectedChunkKey = 0;
 
         [UdonSynced] public double syncTime = 0;
-        [UdonSynced] public byte[] syncData = new byte[texDim * texDim / 8];
+        // [UdonSynced] public byte[] syncData = new byte[texDim * texDim / 8];
+        [UdonSynced, NonSerialized] public Color32[] syncData32 = new Color32[texDim * texDim];
+        [NonSerialized] public Color[] localDataFloat = new Color[texDim * texDim];
 
         private const int texDim = 1024/4;
         // [NonSerialized] public Color32[] tempData32 = new Color32[texDim * texDim];
-        [NonSerialized] public float[] tempFloatData = new float[texDim * texDim];
-        [NonSerialized] public Color32[] decodingTempData32 = new Color32[texDim * texDim];
+        // [NonSerialized] public float[] tempFloatData = new float[texDim * texDim];
+        // [NonSerialized] public Color32[] decodingTempData32 = new Color32[texDim * texDim];
 
         [Header("Decoding Storage")]
         public Chunk decodingForChunk = null;
         public ulong decodingChunkKey = 0;
-        public byte[] decodingSyncData = new byte[texDim * texDim / 8];
+        // public byte[] decodingSyncData = new byte[texDim * texDim / 8];
         public bool isDecoding = false;
         // public Texture2D tempTexture = new Texture2D(texDim, texDim, TextureFormat.RFloat, false);
         public Texture2D tempTexture;
 
-        [Header("Encoding/Decoding Speed per frame")]
-        int encodeSyncDataCurrentStep = 0;
-        public int encodeSyncDataMaxSteps = 512;
-        int decodeSyncDataCurrentStep = 0;
-        public int decodeSyncDataMaxSteps = 512;
+        // [Header("Encoding/Decoding Speed per frame")]
+        // int encodeSyncDataCurrentStep = 0;
+        // public int encodeSyncDataMaxSteps = 512;
+        // int decodeSyncDataCurrentStep = 0;
+        // public int decodeSyncDataMaxSteps = 512;
 
         [Header("Debug Variables")]
-        public float testThreshold = .5f;
+        // public float testThreshold = .5f;
         public bool unityTestBool;
+        public bool debugLogs = false;
+        public float maxAllowedNetworkSuffering = 5f;
+        public bool enableOutlineOnSyncedChunks = false;
+
+        public MeshRenderer ogData;
+        public MeshRenderer newData;
+        public MeshRenderer blitData;
+
+        public TextureFormat tempTextureFormat = TextureFormat.RFloat;
 
         void Start()
         {
-            tempTexture = new Texture2D(texDim, texDim, TextureFormat.RFloat, false);
-            tempTexture.filterMode = FilterMode.Point;
+            CreateTempTexture();
 
             if (Networking.LocalPlayer.IsOwner(this.gameObject))
             {
@@ -59,8 +69,36 @@ namespace VolumetricPens
             }
         }
 
+        public void CreateTempTexture()
+        {
+            // if (tempTexture != null)
+            // {
+            //     tempTexture.
+            // }
+
+            tempTexture = new Texture2D(texDim, texDim, tempTextureFormat, false);
+            tempTexture.filterMode = FilterMode.Point;
+
+            if (blitData != null)
+            {
+                blitData.material.SetTexture("_MainTex", tempTexture);
+            }
+        }
+
         public void CustomUpdate()
         {
+            if (VRC.SDK3.Network.Stats.Suffering > maxAllowedNetworkSuffering)
+            {
+                SendCustomEventDelayedFrames(nameof(CustomUpdate), 10);
+                return;
+            }
+
+            if (shouldSync == false)
+            {
+                SendCustomEventDelayedSeconds(nameof(CustomUpdate), 2f);
+                return;
+            }
+
             DataList existingChunks = system.chunkDict.GetValues();
 
             if (existingChunks.Count <= 0)
@@ -80,11 +118,23 @@ namespace VolumetricPens
                 return;
             }
 
-            Debug.Log($"[{nameof(ChunkSyncHandler)}] {nameof(CustomUpdate)}() selectedChunk: {selectedChunk.gameObject.name}");
+            if (debugLogs) Debug.Log($"[{nameof(ChunkSyncHandler)}] {nameof(CustomUpdate)}() selectedChunk: {selectedChunk.gameObject.name}");
             selectedChunkKey = selectedChunk.key;
+
+            if (selectedChunk.shouldBeSynced == false)
+            {
+                currentChunkIndex++;
+                SendCustomEventDelayedFrames(nameof(CustomUpdate), 1);
+                return;
+            }
 
             // selectedChunk
             VRCAsyncGPUReadback.Request(selectedChunk.data, 0, (IUdonEventReceiver)this);
+
+            if (ogData != null)
+            {
+                ogData.material.SetTexture("_MainTex", selectedChunk.data);
+            }
 
             currentChunkIndex++;
             // SendCustomEventDelayedFrames(nameof(CustomUpdate), 1);
@@ -93,15 +143,26 @@ namespace VolumetricPens
 
         public override void OnAsyncGpuReadbackComplete(VRCAsyncGPUReadbackRequest request)
         {
+            Debug.Log($"[{nameof(ChunkSyncHandler)}] {nameof(OnAsyncGpuReadbackComplete)}()");
+
             if (request.hasError)
             {
-                Debug.LogError($"[{nameof(ChunkSyncHandler)}] GPU READBACK FAILED");
+                Debug.LogError($"[{nameof(ChunkSyncHandler)}] {nameof(OnAsyncGpuReadbackComplete)}() GPU READBACK FAILED");
+                SendCustomEventDelayedFrames(nameof(CustomUpdate), 10);
                 return;
             }
 
-            if (!request.TryGetData(tempFloatData))
+            // if (!request.TryGetData(tempFloatData))
+            // {
+            //     Debug.LogError($"[{nameof(ChunkSyncHandler)}] GET GPU DATA FAILED");
+            //     SendCustomEventDelayedFrames(nameof(CustomUpdate), 10);
+            //     return;
+            // }
+
+            if (!request.TryGetData(syncData32))
             {
-                Debug.LogError($"[{nameof(ChunkSyncHandler)}] GET GPU DATA FAILED");
+                Debug.LogError($"[{nameof(ChunkSyncHandler)}] {nameof(OnAsyncGpuReadbackComplete)}() GET GPU DATA FAILED");
+                SendCustomEventDelayedFrames(nameof(CustomUpdate), 10);
                 return;
             }
 
@@ -110,18 +171,30 @@ namespace VolumetricPens
 
             if (selectedChunk == null)
             {
+                Debug.LogError($"[{nameof(ChunkSyncHandler)}] {nameof(OnAsyncGpuReadbackComplete)}() selectedChunk is null");
+                SendCustomEventDelayedFrames(nameof(CustomUpdate), 10);
                 return;
             }
 
-            EncodeSyncData();
+            for (int i = 0; i < syncData32.Length; i++)
+            {
+                if (syncData32[i].r != 0 || syncData32[i].g != 0 || syncData32[i].b != 0 || syncData32[i].a != 0 )
+                {
+                    Debug.Log(syncData32[i]);
+                    break;
+                }
+            }
 
-            // #if UNITY_EDITOR
-            // SendCustomEventDelayedFrames(nameof(Run_OnPreSerialization), 10);
-            // #else
-            // RequestSerialization();
-            // #endif
+            // EncodeSyncData();
+
+            #if UNITY_EDITOR
+            SendCustomEventDelayedFrames(nameof(Run_OnPreSerialization), 10);
+            #else
+            RequestSerialization();
+            #endif
         }
 
+        /*
         public void EncodeSyncData()
         {
             int i = 0;
@@ -142,7 +215,7 @@ namespace VolumetricPens
 
             if (encodeSyncDataCurrentStep >= syncData.Length)
             {
-                Debug.Log($"[{nameof(ChunkSyncHandler)}] {nameof(EncodeSyncData)}() syncData compiled and compressed!");
+                if (debugLogs) Debug.Log($"[{nameof(ChunkSyncHandler)}] {nameof(EncodeSyncData)}() syncData compiled and compressed!");
 
                 #if UNITY_EDITOR
                 SendCustomEventDelayedFrames(nameof(Run_OnPreSerialization), 10);
@@ -176,7 +249,7 @@ namespace VolumetricPens
 
             if (decodeSyncDataCurrentStep >= decodingSyncData.Length)
             {
-                Debug.Log($"[{nameof(ChunkSyncHandler)}] {nameof(DecodeSyncData)}() syncData decompiled!");
+                if (debugLogs) Debug.Log($"[{nameof(ChunkSyncHandler)}] {nameof(DecodeSyncData)}() syncData decompiled!");
 
                 if (decodingForChunk != null)
                 {
@@ -188,7 +261,7 @@ namespace VolumetricPens
                     tempTexture.Apply();
 
                     VRCGraphics.Blit(tempTexture, decodingForChunk.data);
-                    Debug.Log($"[{nameof(ChunkSyncHandler)}] {nameof(DecodeSyncData)}() Blit success?");
+                    if (debugLogs) Debug.Log($"[{nameof(ChunkSyncHandler)}] {nameof(DecodeSyncData)}() Blit success?");
 
                     system.lod.UpdateLOD(decodingForChunk);
 
@@ -204,17 +277,19 @@ namespace VolumetricPens
 
             SendCustomEventDelayedFrames(nameof(DecodeSyncData), 1);
         }
+        */
 
         #if UNITY_EDITOR
         public void Run_OnPreSerialization() => OnPreSerialization();
         #endif
         public override void OnPreSerialization()
         {
-            Debug.Log($"[{nameof(ChunkSyncHandler)}] {nameof(OnPreSerialization)}()");
+            if (debugLogs) Debug.Log($"[{nameof(ChunkSyncHandler)}] {nameof(OnPreSerialization)}() selectedChunkKey: {selectedChunkKey} | selectedChunk: {Chunk.ToPos(selectedChunkKey)}");
             syncTime = Networking.GetServerTimeInSeconds();
 
             #if UNITY_EDITOR
-            SendCustomEventDelayedFrames(nameof(Run_OnPostSerialization), 1);
+            SendCustomEventDelayedFrames(nameof(Run_OnDeserialization), 1);
+            SendCustomEventDelayedFrames(nameof(Run_OnPostSerialization), 5);
             #endif
         }
 
@@ -223,8 +298,9 @@ namespace VolumetricPens
         #endif
         public override void OnPostSerialization(SerializationResult result)
         {
-            Debug.Log($"[{nameof(ChunkSyncHandler)}] {nameof(OnPostSerialization)}()");
-            SendCustomEventDelayedFrames(nameof(CustomUpdate), 1);
+            if (debugLogs) Debug.Log($"[{nameof(ChunkSyncHandler)}] {nameof(OnPostSerialization)}() result.success: {result.success} | result.byteCount: {result.byteCount}");
+            // SendCustomEventDelayedFrames(nameof(CustomUpdate), 1);
+            SendCustomEventDelayedSeconds(nameof(CustomUpdate), 1f);
         }
 
         #if UNITY_EDITOR
@@ -232,11 +308,13 @@ namespace VolumetricPens
         #endif
         public override void OnDeserialization()
         {
-            Debug.Log($"[{nameof(ChunkSyncHandler)}] {nameof(OnDeserialization)}()");
+            if (debugLogs) Debug.Log($"[{nameof(ChunkSyncHandler)}] {nameof(OnDeserialization)}()");
 
-            if (isDecoding || !shouldSync) return;
+            if (isDecoding || shouldSync == false) return;
 
-            decodingSyncData = syncData;
+            if (debugLogs) Debug.Log($"[{nameof(ChunkSyncHandler)}] {nameof(OnDeserialization)}() selectedChunkKey: {selectedChunkKey} | selectedChunk: {Chunk.ToPos(selectedChunkKey)}");
+
+            // decodingSyncData = syncData;
             decodingChunkKey = selectedChunkKey;
             if (unityTestBool)
             {
@@ -244,17 +322,53 @@ namespace VolumetricPens
                 tempVec.y += 2;
                 decodingChunkKey = Chunk.ToKey(tempVec);
                 // Debug.Log($"Chunk.ToPos(decodingChunkKey): {Chunk.ToPos(decodingChunkKey)}");
-            }
-            system.TryGetChunk(decodingChunkKey, out decodingForChunk);
+                system.TryGetChunk(decodingChunkKey, out decodingForChunk);
 
-            if (decodingForChunk.hasBeenSynced)
+                decodingForChunk.shouldBeSynced = false;
+            }
+            else
             {
-                return;
+                system.TryGetChunk(decodingChunkKey, out decodingForChunk);
+            }
+
+
+            // if (decodingForChunk.hasBeenSynced)
+            // {
+            //     return;
+            // }
+
+            for (int i = 0; i < syncData32.Length; i++)
+            {
+                // localDataFloat[i].r = ((float)(syncData32[i].r << 0) + (float)(syncData32[i].g << 8) + (float)(syncData32[i].b << 16) + (float)(syncData32[i].a << 24));
+                localDataFloat[i].r = ((float)(syncData32[i].r << 24) + (float)(syncData32[i].g << 16) + (float)(syncData32[i].b << 8) + (float)(syncData32[i].a << 0));
             }
 
             isDecoding = true;
 
-            DecodeSyncData();
+            // DecodeSyncData();
+
+            decodingForChunk.EnableChunkOutline(enableOutlineOnSyncedChunks);
+
+            if (debugLogs) Debug.Log($"Loading syncData32 into tempTeture...");
+            // tempTexture.SetPixels32(syncData32);
+            tempTexture.SetPixels(localDataFloat);
+            tempTexture.Apply();
+
+            if (debugLogs) Debug.Log($"Blit tempTexture onto decodingForChunk.data");
+            VRCGraphics.Blit(tempTexture, decodingForChunk.data);
+
+            if (debugLogs) Debug.Log($"Updating the chunk mesh and LOD");
+            system.lod.UpdateLOD(decodingForChunk);
+            decodingForChunk.UpdateMesh();
+
+            decodingForChunk.hasBeenSynced = true;
+
+            isDecoding = false;
+
+            if (newData != null)
+            {
+                newData.material.SetTexture("_MainTex", decodingForChunk.data);
+            }
         }
 
         public override void OnOwnershipTransferred(VRCPlayerApi player)

@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c333ccfdd0cbdbc4ca30cef2dd6e6b9b, type: 3}
   m_Name: NoDrawZone
   m_EditorClassIdentifier: 
-  serializedUdonProgramAsset: {fileID: 11400000, guid: 2e9458f0257eeccb69b6ed0f656da43e, type: 2}
+  serializedUdonProgramAsset: {fileID: 11400000, guid: d88c3dd7bc1158343b5bc036689c8955, type: 2}
   udonAssembly: 
   assemblyError: 
   sourceCsScript: {fileID: 11500000, guid: ecec390813d8f69289da82ccc7acdf90, type: 3}

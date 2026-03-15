@@ -136,21 +136,27 @@ public class LodSystem : UdonSharpBehaviour
         
         if (request.hasError)
         {
-            Debug.LogError("GPU READBACK FAILED");
+            Debug.LogError($"[{nameof(LodSystem)}] {nameof(OnAsyncGpuReadbackComplete)}() GPU READBACK FAILED");
             return;
         }
 
         if (!request.TryGetData(tempData))
         {
-            Debug.LogError("GET GPU DATA FAILED");
+            Debug.LogError($"[{nameof(LodSystem)}] {nameof(OnAsyncGpuReadbackComplete)}() GET GPU DATA FAILED");
             return;
         }
 
         int len = (int)tempData[tempData.Length - 1].r;
 
-        if (len % 3 != 0 || len >= tempData.Length)
+        if (len % 3 != 0)
         {
-            Debug.LogError(len + " not % 3!");
+            Debug.LogError($"[{nameof(LodSystem)}] {nameof(OnAsyncGpuReadbackComplete)}() len: {len} not % 3!");
+            return;
+        }
+
+        if (len >= tempData.Length)
+        {
+            Debug.LogError($"[{nameof(LodSystem)}] {nameof(OnAsyncGpuReadbackComplete)}() len: {len} >= tempData.Length: {tempData.Length}");
             return;
         }
 
@@ -166,7 +172,7 @@ public class LodSystem : UdonSharpBehaviour
         Array.Copy(system.Triangles, triangles, len);
 
         if (!gpuUpdateQueue.TryGetValue(0, out DataToken chunkToken)) {
-            Debug.LogError("Failed to get queue element!");
+            Debug.LogError($"[{nameof(LodSystem)}] {nameof(OnAsyncGpuReadbackComplete)}() Failed to get queue element!");
             return;
         }
 

@@ -10,12 +10,14 @@ public class Chunk : UdonSharpBehaviour
     public RenderTexture data;
     public MeshFilter[] meshFilter;
     public MeshCollider meshCollider;
+    public GameObject chunkOutline;
     [HideInInspector] public Mesh[] mesh;
 
     public ulong key;
 
     public double lastUpdated = 0;
     public bool hasBeenSynced = false;
+    public bool shouldBeSynced = true;
     public double lastSyncedUpdated = 0;
 
     public static Chunk Create(MarchingCubeSystem system, ulong key)
@@ -52,14 +54,22 @@ public class Chunk : UdonSharpBehaviour
             meshFilter[i].sharedMesh = mesh[i];
         }
 
-        #if UNITY_EDITOR
+        // #if UNITY_EDITOR
         name = $"Chunk {transform.localPosition}, {key}";
-        #endif
+        // #endif
     }
 
     public void EnableMeshCollider(bool enabled)
     {
         meshCollider.enabled = enabled;
+    }
+
+    public void EnableChunkOutline(bool enabled)
+    {
+        if (chunkOutline != null)
+        {
+            chunkOutline.SetActive(enabled);
+        }
     }
 
     public void UpdateMeshCollider(Mesh mesh)
@@ -119,4 +129,18 @@ public class Chunk : UdonSharpBehaviour
             (int)((long)((key >> 40) & 0xFFFFF) - 0x7FFFF)
         );
     }
+
+    #if UNITY_EDITOR && !COMPILER_UDONSHARP
+    private void OnDrawGizmosSelected()
+    {
+        Matrix4x4 oldMatrix = Gizmos.matrix;
+        // Gizmos.matrix = this.transform.localToWorldMatrix;
+        Gizmos.matrix = Matrix4x4.identity;
+        Gizmos.color = Color.white;
+
+        Gizmos.DrawWireCube(this.transform.position, Vector3.one);
+
+        Gizmos.matrix = oldMatrix;
+    }
+    #endif
 }
