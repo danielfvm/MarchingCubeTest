@@ -99,7 +99,7 @@ namespace VolumetricPens
                 return;
             }
 
-            DataList existingChunks = system.chunkDict.GetValues();
+            /* DataList existingChunks = system.chunkDict.GetValues();
 
             if (existingChunks.Count <= 0)
             {
@@ -136,7 +136,7 @@ namespace VolumetricPens
                 ogData.material.SetTexture("_MainTex", selectedChunk.data);
             }
 
-            currentChunkIndex++;
+            currentChunkIndex++;*/
             // SendCustomEventDelayedFrames(nameof(CustomUpdate), 1);
             // RequestSerialization();
         }

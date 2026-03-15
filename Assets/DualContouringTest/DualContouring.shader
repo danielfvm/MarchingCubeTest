@@ -82,8 +82,8 @@ Shader "VolumetricPen/DualContouring"
 
         float box = sdBox(ApplyRotation(float4(coord - 30.0, 0.0), float3(30.0, 0.0, 45.0)).xyz, 5.0);
         float sphere_one = (distance(coord, 32) * 0.08) - 2.0;
-        // float cutout_sphere = (distance(coord, float3(16, 16, 16) + float3(0, sin(_UdonTime) * 6, 0)) * 0.08) - 2.0;
-        float cutout_sphere = (distance(coord, float3(16, 16, 16) + float3(0, 6, 0)) * 0.08) - 2.0;
+        float cutout_sphere = (distance(coord, float3(16, 16, 16) + float3(0, sin(_UdonTime) * 6, 0)) * 0.08) - 2.0;
+//        float cutout_sphere = (distance(coord, float3(16, 16, 16) + float3(0, 6, 0)) * 0.08) - 2.0;
 
         return min(box, max(sphere_one, -cutout_sphere));
     }
@@ -191,6 +191,9 @@ Shader "VolumetricPen/DualContouring"
 
                 if (abs(_det) < 1e-3)
                     vertex = mean;
+                
+             //   if (any(vertex <= gridPos) || any(vertex >= gridPos + 1))
+                    vertex = min(max(vertex, gridPos - 1), gridPos + 2);//float4((vertex * 0.5 + mean * 0.5), 0.0);
 
                 //if (any(vertex <= gridPos) || any(vertex >= gridPos + 1))
                 //    vertex = mean;//float4((vertex * 0.5 + mean * 0.5), 0.0);

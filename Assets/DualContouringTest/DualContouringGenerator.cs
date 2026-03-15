@@ -92,12 +92,12 @@ public class DualContouringGenerator : UdonSharpBehaviour
         if (Input.GetKey(KeyCode.F))
             Generate();    
     }
-
+bool generating = false;
     public void Generate()
     {
-
-        vertex = true;
-
+        if (generating)
+            return;
+        generating = true;
         // debugWeightData.SetTexture("_MainTex", weightData);
 
         // Compute Vertices
@@ -126,8 +126,18 @@ public class DualContouringGenerator : UdonSharpBehaviour
             debugVertexData.SetTexture("_MainTex", vertexData);
             debugActiveVertexData.SetTexture("_MainTex", activeVertexData);
             debugCompactVertexData.SetTexture("_MainTex", compactVertexData);
+        
+            VRCAsyncGPUReadback.Request(compactVertexData, 0, (IUdonEventReceiver)this);
         }
 
+        SendCustomEventDelayedFrames(nameof(Test), 10);
+
+    }
+
+    public void Test()
+    {
+        
+        
         // Compute Indices
         {
             matDualContouring.SetTexture("_IndexLookup", indexLookupData);
@@ -149,20 +159,19 @@ public class DualContouringGenerator : UdonSharpBehaviour
             debugActiveIndexData.SetTexture("_MainTex", activeIndexData);
             debugCompactIndexData.SetTexture("_MainTex", compactIndexData);
 
-
-            VRCAsyncGPUReadback.Request(compactVertexData, 0, (IUdonEventReceiver)this);
             VRCAsyncGPUReadback.Request(compactIndexData, 0, (IUdonEventReceiver)this);
         }
     }
 
-    bool vertex;
-    public bool triangles = true;
+    Color[] finalColors;
+    int[] finalIndices;
 
     public override void OnAsyncGpuReadbackComplete(VRCAsyncGPUReadbackRequest request)
     {
+        bool vertex = request.width == compactVertexData.width;
+
         if (vertex)
         {
-            vertex = false;
             if (!request.TryGetData(vertexReadback))
                 return;
 
@@ -174,16 +183,13 @@ public class DualContouringGenerator : UdonSharpBehaviour
             //int[] triangles = new int[len];
             //Array.Copy(Triangles, triangles, len);
 
-            Color[] colors = new Color[len];
-            Array.Copy(vertexReadback, colors, len);
+            finalColors = new Color[len];
+            Array.Copy(vertexReadback, finalColors, len);
             
             //for (int i = 0; i < len; i++)
             //    vertices[i] = new Vector3(vertexReadback[i].r, vertexReadback[i].g, vertexReadback[i].b);
             
             //mesh.SetVertices(vertices, 0, len, UnityEngine.Rendering.MeshUpdateFlags.DontRecalculateBounds);
-            mesh.SetVertices(new Vector3[len], 0, len, UnityEngine.Rendering.MeshUpdateFlags.DontRecalculateBounds);
-            mesh.SetColors(colors, 0, len, UnityEngine.Rendering.MeshUpdateFlags.DontRecalculateBounds);
-            //mesh.SetIndices(triangles, MeshTopology.Points, 0, false);
         }
         else
         {
@@ -191,17 +197,22 @@ public class DualContouringGenerator : UdonSharpBehaviour
                 return;
 
             int len = BitConverter.ToInt32(indexReadback, indexReadback.Length - 4);
-            int[] indices = new int[len * 4];
-            Buffer.BlockCopy(indexReadback, 0, indices, 0, len * 4 * 4);
+            finalIndices = new int[len * 4];
+            Buffer.BlockCopy(indexReadback, 0, finalIndices, 0, len * 4 * 4);
 
-            if (triangles)
-            {
-                mesh.SetIndices(indices, MeshTopology.Quads, 0, false);
-               // mesh.RecalculateNormals();
-            }
+            Debug.Log("Len: " + finalIndices.Length);
+            text.text = "Len: " + finalIndices.Length;
+        }
 
-            Debug.Log("Len: " + indices.Length);
-            text.text = "Len: " + indices.Length;
+        if (finalColors != null && finalIndices != null)
+        {
+            mesh.SetVertices(new Vector3[finalColors.Length], 0, finalColors.Length, UnityEngine.Rendering.MeshUpdateFlags.DontRecalculateBounds);
+            mesh.SetColors(finalColors, 0, finalColors.Length, UnityEngine.Rendering.MeshUpdateFlags.DontRecalculateBounds);
+            mesh.SetIndices(finalIndices, MeshTopology.Quads, 0, false);
+
+            generating = false;
+            finalColors = null;
+            finalIndices = null;
         }
     }
 }

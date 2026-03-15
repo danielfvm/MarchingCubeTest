@@ -22,9 +22,9 @@ namespace VolumetricPens
         private RenderTexture buffer;
         
         private DataDictionary chunks = new DataDictionary();
-        public DataDictionary chunkDict { get => chunks; }
+        private DataDictionary dataBlocks = new DataDictionary();
 
-        private readonly int VoxelAmount = 40 - 4; // -2 because of the border 
+        public readonly int VoxelAmount = 40;
 
         public Text text;
 
@@ -80,8 +80,7 @@ namespace VolumetricPens
             collision = !collision;
 
             var tokens = chunks.GetValues();
-            for (int i = 0; i < chunks.Count; i++)
-            {
+            for (int i = 0; i < chunks.Count; i++) {
                 if (tokens[i].Reference == null) continue;
                 ((Chunk)tokens[i].Reference).EnableMeshCollider(collision);
             }
@@ -90,28 +89,39 @@ namespace VolumetricPens
         public void Reset()
         {
             var tokens = chunks.GetValues();
-            for (int i = 0; i < chunks.Count; i++)
-            {
+            for (int i = 0; i < chunks.Count; i++) {
                 if (tokens[i].Reference == null) continue;
                 Destroy(((Chunk)tokens[i].Reference).gameObject);
             }
             chunks.Clear();
             gpuUpdateQueue.Clear();
-            lod.Reset();
+           // lod.Reset();
         }
 
-        public bool TryGetChunk(ulong key, out Chunk chunk)
+        public bool TryGetChunk(ulong key, out Chunk value)
         {
-            if (chunks.TryGetValue(key, out DataToken token))
-            {
-                chunk = (Chunk)token.Reference;
+            if (chunks.TryGetValue(key, out DataToken token)) {
+                value = (Chunk)token.Reference;
                 return true;
             }
 
             Debug.Log($"[{nameof(MarchingCubeSystem)}] {nameof(TryGetChunk)}({key}, null) {Chunk.ToPos(key)} Chunk nonexistent, creating new chunk...");
 
-            chunk = Chunk.Create(this, key);
-            chunks.SetValue(key, chunk);
+            value = Chunk.Create(this, key);
+            chunks.SetValue(key, value);
+
+            return true;
+        }
+
+        public bool TryGetDataBlock(ulong key, out DataBlock value)
+        {
+            if (dataBlocks.TryGetValue(key, out DataToken token)) {
+                value = (DataBlock)token.Reference;
+                return true;
+            }
+
+            value = DataBlock.Empty(this);
+            dataBlocks.SetValue(key, (DataToken)(object)value);
 
             return true;
         }
@@ -120,9 +130,12 @@ namespace VolumetricPens
         public void Paint(Vector3 from, Vector3 center, Vector3 to, bool erase, float radius, int colorIdx)
         {
             // Manually unrolled loop and use dictonary as a trick to remove duplicate keys
-            Vector3 localFrom = transform.InverseTransformPoint(from) + Vector3.one * 0.5f;
-            Vector3 localCenter = transform.InverseTransformPoint(center) + Vector3.one * 0.5f;
-            Vector3 localTo = transform.InverseTransformPoint(to) + Vector3.one * 0.5f;
+            //Vector3 localFrom = transform.InverseTransformPoint(from) + Vector3.one * 0.5f;
+            //Vector3 localCenter = transform.InverseTransformPoint(center) + Vector3.one * 0.5f;
+            //Vector3 localTo = transform.InverseTransformPoint(to) + Vector3.one * 0.5f;
+            Vector3 localFrom = transform.InverseTransformPoint(from);
+            Vector3 localCenter = transform.InverseTransformPoint(center);
+            Vector3 localTo = transform.InverseTransformPoint(to);
 
             radius /= 2f;
 
@@ -150,25 +163,38 @@ namespace VolumetricPens
             for (int z = minZ; z <= maxZ; z++)
             {
                 Vector3 chunkCoord = new Vector3(x, y, z);
-                if (!TryGetChunk(Chunk.ToKey(chunkCoord), out Chunk chunk))
+                if (!TryGetDataBlock(Chunk.ToKey(chunkCoord), out DataBlock block))
                     continue;
 
                 matPaint.SetVector("_Chunk", chunkCoord);
 
-                VRCGraphics.Blit(chunk.data, buffer);
-                VRCGraphics.Blit(null, chunk.data, matPaint, erase ? passErase : passPaint);
+                RenderTexture[] data = block.GetData();
+                VRCGraphics.Blit(data[0], buffer);
+                VRCGraphics.Blit(null, data[0], matPaint, erase ? passErase : passPaint);
 
-                lod.UpdateLOD(chunk);
+                // lod.UpdateLOD(chunk);
 
-                chunk.UpdateMesh();
-
-                chunk.hasBeenSynced = true;
+                //chunk.UpdateMesh();
+                //chunk.hasBeenSynced = true;
             }
-
-            int blockCount = chunks.Count;
-            float sizeMb = blockCount * 256f * 256f * 4f / 1024f / 1024f;
-            text.text = "Blocks: " + blockCount + "\nSize: " + (Mathf.Floor(sizeMb * 100f) / 100f)  + "MB";
         }
+
+        #if UNITY_EDITOR && !COMPILER_UDONSHARP
+        private void OnDrawGizmosSelected()
+        {
+            Matrix4x4 oldMatrix = Gizmos.matrix;
+            Gizmos.matrix = transform.localToWorldMatrix;
+            Gizmos.color = Color.white;
+            foreach (var key in chunks.GetKeys())
+                Gizmos.DrawWireCube(Chunk.ToPos(key.ULong), Vector3.one);
+
+            Gizmos.color = Color.yellow;
+            foreach (var key in dataBlocks.GetKeys())
+                Gizmos.DrawWireCube(Chunk.ToPos(key.ULong) + Vector3.one * 0.5f, Vector3.one);
+
+            Gizmos.matrix = oldMatrix;
+        }
+        #endif
 
         private DataList gpuUpdateQueue = new DataList();
 
@@ -219,7 +245,7 @@ namespace VolumetricPens
                 return;
             }
 
-            int len = (int)tempData[tempData.Length - 1].r;
+            int len = BitConverter.SingleToInt32Bits(tempData[tempData.Length - 1].r);
 
             if (len % 3 != 0)
             {
@@ -240,6 +266,8 @@ namespace VolumetricPens
 
             var colors = new Color[len];
             Array.Copy(tempData, colors, len);
+
+            Debug.Log(len);
 
             int[] triangles = new int[len];
             Array.Copy(Triangles, triangles, len);
