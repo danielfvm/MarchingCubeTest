@@ -6,12 +6,13 @@ Shader "VRCVolume/MarchingCubeVolume"
     #include "MarchingCubeTables.cginc"
 
     // Uniforms
-    Texture2D<uint> _DataTex; // if it doesnt work on quest try to set this to float
+    Texture2D<uint> _DataTex;
     Texture2D<uint4> _TriangleTex;
     Texture2D<float> _ActiveTex;
     bool _Collider;
-    uint3 _VoxelDimension;
+    int3 _VoxelDimension;
     uint2 _TargetSize;
+    uint2 _DataSize;
     uint _MaxLod;
 
     struct v2f
@@ -39,11 +40,10 @@ Shader "VRCVolume/MarchingCubeVolume"
             Name "Generate"
 
             CGPROGRAM
+            #pragma shader_feature _CHUNKED_ON
             #pragma vertex vert
             #pragma fragment frag
             #pragma target 5.0
-
-            uint2 dim;
 
             uint EncodeZOrder(uint2 coord)
             {
@@ -61,18 +61,23 @@ Shader "VRCVolume/MarchingCubeVolume"
             
             float2 sample(int3 pos)
             {
+                #if _CHUNKED_ON
+                int3 p = clamp((pos * 2) / _VoxelDimension, 0, 1);
+
+                pos -= (p * 2 - 1) * _VoxelDimension / 2;
+
+                int index = pos.x + pos.y * _VoxelDimension.x + pos.z * _VoxelDimension.x * _VoxelDimension.y;
+                int2 uv = int2(index % _DataSize.x, index / _DataSize.x);
+                uint idx = p.x + p.y * 2 + p.z * 4;
+                uint data = _DataTex[uv + uint2(idx % 2, idx / 2) * _DataSize];
+                #else
+                pos = clamp(pos, 0, _VoxelDimension - 1);
                 uint index = pos.x + pos.y * _VoxelDimension.x + pos.z * _VoxelDimension.x * _VoxelDimension.y;
-                uint2 uv = uint2(index % dim.x, index / dim.y);
-                
+                uint2 uv = uint2(index % _DataSize.x, index / _DataSize.y);
                 uint data = _DataTex[uv];
+                #endif
+
                 return float2(float(data >> 8) / 0xFFFF, data & 0xFF);
-                
-                /*uint value = _DataTex[uv] * 0xFFFFFF;
-
-                float weight = float(value >> 8) / 0xFFFF;
-                float color = (value >> 1) & 0xFF;
-
-                return float2(weight, color);*/
             }
 
             float sampleWeight(float3 pos)
@@ -102,20 +107,6 @@ Shader "VRCVolume/MarchingCubeVolume"
                     sample(pos + int3(0,1,0)).r - w,
                     sample(pos + int3(0,0,1)).r - w
                 ));
-            } 
- 
-            float3 sampleFlatNormal(float cubeData[8], float3 pos)
-            {
-                float x = lerp(cubeData[0], cubeData[1], pos.x);
-                float y = lerp(cubeData[0], cubeData[3], pos.y);
-                float z = lerp(cubeData[0], cubeData[4], pos.z);
-                float w = (x + y + z) / 3.0;
-
-                return normalize(float3( 
-                    cubeData[1] - w,
-                    cubeData[3] - w,
-                    cubeData[4] - w
-                ));
             }
 
             uint4 EncodeVertex(float3 position, float3 normal, uint color)
@@ -133,12 +124,10 @@ Shader "VRCVolume/MarchingCubeVolume"
 
 			uint4 frag (v2f IN) : SV_Target
             {
-                _DataTex.GetDimensions(dim.x, dim.y);
-
                 uint2 uv = IN.uv * _TargetSize; // TODO: Change with dynamic code
 
                 uint voxelIndex = (uv.x >> 2) + (uv.y >> 2) * (_TargetSize.x >> 2);
-                uint subIndex = EncodeZOrder(uv % 4); //(uv.x % 4) + (uv.y % 4) * 4;
+                uint subIndex = EncodeZOrder(uv % 4);
                 uint triIndex = subIndex / 3;
                 uint vertIndex = subIndex % 3;
                 
@@ -146,13 +135,11 @@ Shader "VRCVolume/MarchingCubeVolume"
                 // per cube in total, so at least one Pixel always stays empty.
                 uint mask = triIndex != 5 ? 1 : 0;
 
-                int3 gridPos = uint3(
+                int3 gridPos = int3(
                     voxelIndex % _VoxelDimension.x, 
                     (voxelIndex / _VoxelDimension.x) % _VoxelDimension.y, 
                     (voxelIndex / _VoxelDimension.x) / _VoxelDimension.y
                 );
-
-                mask *= all(gridPos < _VoxelDimension) ? 1 : 0;
 
                 int i;
                 float2 cubeData[8];
@@ -211,10 +198,7 @@ Shader "VRCVolume/MarchingCubeVolume"
 
 			float frag (v2f IN) : SV_Target
 			{
-                uint2 dim;
-                _TriangleTex.GetDimensions(dim.x, dim.y);
-
-				return any(_TriangleTex[IN.uv * dim] > 0.0) ? 1 : 0; // TODO: Maybe * _TargetSize is easier
+				return any(_TriangleTex[IN.uv * _TargetSize] > 0.0) ? 1 : 0;
 			}
 
             ENDCG

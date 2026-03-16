@@ -13,39 +13,31 @@ namespace VRCVolumes
     /// Generates a mesh including colliders using a shader + AsyncGPUReadback.
     /// Make sure to first initialize the Volume instance by calling Setup() before Build().
     /// </summary>
-    public class Volume : UdonSharpBehaviour
+    public class VolumeBuilder : UdonSharpBehaviour
     {
-        #region Serialized Fields
-        [Tooltip("Automatically updates the mesh if set")]
-        public MeshFilter meshFilter;
-
-        [Tooltip("Automatically updates the collision mesh if set")]
-        public MeshCollider meshCollider;
-        #endregion
-
         /// <summary>
-        /// true if the Volume is currently updating the mesh / waiting on async readback.
+        /// true if the VolumeBuilder is currently updating the mesh / waiting on async readback.
         /// </summary>
         public bool IsBuilding => buildingQueue.Count > 0;
 
         /// <summary>
-        /// The texture dimension required for Volume.Build(data). (Assuming every pixel is one voxel)
+        /// The texture dimension required for VolumeBuilder.Build(data). (Assuming every pixel is one voxel)
         /// </summary>
         public Vector2Int TextureDimensionInt { get; private set; }
 
         /// <summary>
-        /// The texture dimension required for Volume.Build(data). This is the same value as TextureDimensionInt but 
+        /// The texture dimension required for VolumeBuilder.Build(data). This is the same value as TextureDimensionInt but 
         /// casted from Vector3Int to Vector3 to simplify assignments / conversions. 
         /// </summary>
         public Vector2 TextureDimension => new Vector2(TextureDimensionInt.x, TextureDimensionInt.y);
 
         /// <summary>
-        /// Defines the width, height and depth of the Volume. 
+        /// Defines the width, height and depth of the VolumeBuilder. 
         /// </summary>
         public Vector3Int VoxelDimensionInt { get; private set; }
 
         /// <summary>
-        /// Defines the width, height and depth of the Volume. This is the same value as VoxelDimensionInt but 
+        /// Defines the width, height and depth of the VolumeBuilder. This is the same value as VoxelDimensionInt but 
         /// casted from Vector3Int to Vector3 to simplify assignments / conversions. 
         /// </summary>
         public Vector3 VoxelDimension => new Vector3(VoxelDimensionInt.x, VoxelDimensionInt.y, VoxelDimensionInt.z);
@@ -78,7 +70,7 @@ namespace VRCVolumes
         public void OnDestroy() => Cleanup();
         
         /// <summary>
-        /// Configure the Volume. Try to avoid calling this function often / it is slow. If you need multiple Volumes with different
+        /// Configure the VolumeBuilder. Try to avoid calling this function often / it is slow. If you need multiple VolumeBuilders with different
         /// configuration you should instead create multiple instances and configure each with the requried configuration.
         /// </summary>
         /// <param name="voxelDimension"></param>
@@ -124,7 +116,6 @@ namespace VRCVolumes
             tempTexCompact = new RenderTexture(texDim * 2, texDim * 2, 0, RenderTextureFormat.ARGBFloat);
             tempTexCompact.filterMode = FilterMode.Point;
             tempTexCompact.Create();
-            
 
             // MarkDynamic is supposed to make it more optimized in case the mesh updates a lot
             // and indexFormat is set to UInt32 because otherwise it would fail with more than 2^16 vertices.
@@ -144,20 +135,29 @@ namespace VRCVolumes
             buildingQueue = new DataList();
         }
 
+        public RenderTexture CreateData()
+        {
+            var data = new RenderTexture(TextureDimensionInt.x, TextureDimensionInt.y, 0, RenderTextureFormat.RFloat);
+            data.filterMode = FilterMode.Point;
+            data.Create();
+
+            return data;
+        }
+
         /// <summary>
         /// Builds a marching cube mesh from the provided weights (data argument) and either directly updates the 
-        /// Volume.meshFilter or Volume.meshCollider (if buildCollider true) or calls the callback function with
+        /// VolumeBuilder.meshFilter or VolumeBuilder.meshCollider (if buildCollider true) or calls the callback function with
         /// the newly created Mesh as an argument.
         /// </summary>
-        /// <param name="data">Weight (and optionally color) data with an expected size of Volume.TextureDimension</param>
+        /// <param name="data">Weight (and optionally color) data with an expected size of VolumeBuilder.TextureDimension</param>
         /// <param name="buildCollider">If true will generate a CPU mesh useful for colliders (slower!).</param>
         /// <param name="sharedMesh">Optionally specify what mesh to update, otherwise will use internal one.</param>
         /// <param name="callback">If set, will be called after Mesh has been built.</param>
-        public void Build(Texture data, bool buildCollider, Mesh sharedMesh = null, VolumeCallback callback = null)
+        public void Build(bool buildCollider, Texture data, Mesh sharedMesh = null, VolumeCallback callback = null)
         {
             if (buildingQueue == null)
             {
-                Debug.LogError($"[{name}][Volume][ERR]: Build() was called before Setup()");
+                Debug.LogError($"[{name}][VolumeBuilder][ERR]: Build() was called before Setup()");
                 return;
             }
 
@@ -169,9 +169,11 @@ namespace VRCVolumes
             }
 
             // Generate the mesh
-            material.SetInteger("_Collider", buildCollider ? 1 : 0); // Depending on this value the result's encoding changes
             material.SetTexture("_DataTex", data);
+            material.SetInteger("_Collider", buildCollider ? 1 : 0); // Depending on this value the result's encoding changes
+
             material.SetVector("_VoxelDimension", VoxelDimension);
+            material.SetVector("_DataSize", TextureDimension);
             material.SetVector("_TargetSize", new Vector2(tempTexTriangle.width, tempTexTriangle.height));
             VRCGraphics.Blit(null, tempTexTriangle, material, passGenerate);
             
@@ -204,7 +206,7 @@ namespace VRCVolumes
         {
             if (!buildingQueue.TryGetValue(0, out DataToken buildInfo))
             {
-                Debug.LogError($"[{name}][Volume][ERR]: Expected queue element.");
+                Debug.LogError($"[{name}][VolumeBuilder][ERR]: Expected queue element.");
                 return;
             }
 
@@ -216,13 +218,13 @@ namespace VRCVolumes
 
             if (request.hasError)
             {
-                Debug.LogError($"[{name}][Volume][ERR]: Gpu Readback has error.");
+                Debug.LogError($"[{name}][VolumeBuilder][ERR]: Gpu Readback has error.");
                 return;
             }
 
             if (!request.TryGetData(tempData))
             {
-                Debug.LogError($"[{name}][Volume][ERR]: Gpu Readback failed to get data.");
+                Debug.LogError($"[{name}][VolumeBuilder][ERR]: Gpu Readback failed to get data.");
                 return;
             }
 
@@ -230,7 +232,7 @@ namespace VRCVolumes
             int len = BitConverter.SingleToInt32Bits(tempData[tempData.Length - 1].r);
             if (len > tempData.Length)
             {
-                Debug.LogError($"[{name}][Volume][ERR]: Gpu Readback returned length of {len} but max is {tempData.Length}, was there an error with the shader material?");
+                Debug.LogError($"[{name}][VolumeBuilder][ERR]: Gpu Readback returned length of {len} but max is {tempData.Length}, was there an error with the shader material?");
                 return;
             }
 
@@ -253,14 +255,6 @@ namespace VRCVolumes
             mesh.SetVertices(vertices, 0, len, UnityEngine.Rendering.MeshUpdateFlags.DontRecalculateBounds);
             mesh.SetColors(colors, 0, len, UnityEngine.Rendering.MeshUpdateFlags.DontRecalculateBounds);
             mesh.SetIndices(triangles, MeshTopology.Triangles, 0, false);
-
-            // As you can see, we do not update the meshFilter if we have updateCollider flag set. This is because the 
-            // updateCollider mode uses a different encoding for tempData[] that would make the visible mesh look broken.
-            if (meshFilter != null && !collider)
-                meshFilter.mesh = mesh;
-
-            if (meshCollider != null && collider)
-                meshCollider.sharedMesh = mesh;
 
             long timePast = DateTimeOffset.Now.ToUnixTimeMilliseconds() - timeStart;
 
