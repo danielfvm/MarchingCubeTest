@@ -100,3 +100,4 @@ InitTestScene*.unity*
 /Assets/SerializedUdonPrograms
 /Assets/UdonSharp
 /Assets/Scenes/VRCDefaultWorldScene
+/Packages/com.vrchat.worlds/Samples/UdonExampleScene/SerializedUdonPrograms
