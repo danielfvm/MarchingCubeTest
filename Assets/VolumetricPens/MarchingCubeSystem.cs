@@ -105,7 +105,7 @@ namespace VolumetricPens
                 return true;
             }
 
-            Debug.Log($"[{nameof(MarchingCubeSystem)}] {nameof(TryGetChunk)}({key}, {null}) Chunk nonexistent, creating new chunk...");
+            Debug.Log($"[{nameof(MarchingCubeSystem)}] {nameof(TryGetChunk)}({key}, null) {Chunk.ToPos(key)} Chunk nonexistent, creating new chunk...");
 
             value = Chunk.Create(this, key);
             chunks.SetValue(key, value);
@@ -232,20 +232,30 @@ namespace VolumetricPens
 
         public override void OnAsyncGpuReadbackComplete(VRCAsyncGPUReadbackRequest request)
         {
-            if (request.hasError) {
-                Debug.LogError("GPU READBACK FAILED");
+            if (request.hasError)
+            {
+                Debug.LogError($"[{nameof(MarchingCubeSystem)}] {nameof(OnAsyncGpuReadbackComplete)}() GPU READBACK FAILED");
                 return;
             }
 
-            if (!request.TryGetData(tempData)) {
-                Debug.LogError("GET GPU DATA FAILED");
+
+            if (!request.TryGetData(tempData))
+            {
+                Debug.LogError($"[{nameof(MarchingCubeSystem)}] {nameof(OnAsyncGpuReadbackComplete)}() GET GPU DATA FAILED");
                 return;
             }
 
             int len = BitConverter.SingleToInt32Bits(tempData[tempData.Length - 1].r);
 
-            if (len % 3 != 0 || len >= tempData.Length) {
-                Debug.LogError("Not % 3!");
+            if (len % 3 != 0)
+            {
+                Debug.LogError($"[{nameof(MarchingCubeSystem)}] {nameof(OnAsyncGpuReadbackComplete)}() len: {len} not % 3!");
+                return;
+            }
+
+            if (len >= tempData.Length)
+            {
+                Debug.LogError($"[{nameof(MarchingCubeSystem)}] {nameof(OnAsyncGpuReadbackComplete)}() len: {len} >= tempData.Length: {tempData.Length}");
                 return;
             }
 
@@ -263,7 +273,7 @@ namespace VolumetricPens
             Array.Copy(Triangles, triangles, len);
 
             if (!gpuUpdateQueue.TryGetValue(0, out DataToken chunkToken)) {
-                Debug.LogError("Failed to get queue element!");
+                Debug.LogError($"[{nameof(MarchingCubeSystem)}] {nameof(OnAsyncGpuReadbackComplete)}() Failed to get queue element!");
                 return;
             }
 
@@ -279,5 +289,21 @@ namespace VolumetricPens
 
             //Debug.Log("Mesh updated!");
         }
+
+        // #if UNITY_EDITOR && !COMPILER_UDONSHARP
+        // private void OnDrawGizmosSelected()
+        // {
+        //     Matrix4x4 oldMatrix = Gizmos.matrix;
+        //     Gizmos.matrix = this.transform.localToWorldMatrix;
+        //     Gizmos.color = Color.white;
+
+        //     foreach (var key in chunks.GetKeys())
+        //     {
+        //         Gizmos.DrawWireCube(Chunk.ToPos(key.ULong), Vector3.one);
+        //     }
+
+        //     Gizmos.matrix = oldMatrix;
+        // }
+        // #endif
     }
 }
