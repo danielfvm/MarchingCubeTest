@@ -80,12 +80,10 @@ Shader "VolumetricPen/DualContouring"
         //return sdBox(ApplyRotation(float4(coord - 30.0, 0.0), float3(30.0, 0.0, 45.0)).xyz, 5.0);
         //return sdBox(coord - 30.0, 5.0);
 
-        float box = sdBox(ApplyRotation(float4(coord - 30.0, 0.0), float3(30.0, 0.0, 45.0)).xyz, 5.0);
-        float sphere_one = (distance(coord, 32) * 0.08) - 2.0;
-        float cutout_sphere = (distance(coord, float3(16, 16, 16) + float3(0, sin(_UdonTime) * 6, 0)) * 0.08) - 2.0;
-//        float cutout_sphere = (distance(coord, float3(16, 16, 16) + float3(0, 6, 0)) * 0.08) - 2.0;
-
-        return min(box, max(sphere_one, -cutout_sphere));
+        return min(
+            sdBox(ApplyRotation(float4(coord - 30.0, 0.0), float3(30.0, 0.0, 45.0)).xyz, 5.0),
+            max(2.0 - distance(coord, float3(16, 16 + sin(_UdonTime) * 6, 16)) * 0.08, distance(coord, 32) * 0.08 - 2.0)
+        );
     }
 
     float3 getNormal(float3 coord)
@@ -104,7 +102,147 @@ Shader "VolumetricPen/DualContouring"
     {
         Pass
         {
-            Name "Vertices"
+            Name "Vertices" // SurfaceNets
+            CGPROGRAM
+            #pragma vertex vert
+            #pragma fragment frag
+            #pragma target 5.0
+
+            float4 EncodeVertex(float3 position, float3 normal, uint color)
+            {
+                uint3 qp = uint3(saturate(position) * 0x3FF);
+                uint3 qn = uint3((normalize(normal) * 0.5 + 0.5) * 0x3FF);
+
+                return float4(
+                    (qp.x | (qp.y << 10)) / float(0xFFFFF), 
+                    (qp.z | (qn.x << 10)) / float(0xFFFFF), 
+                    (qn.y | (qn.z << 10)) / float(0xFFFFF), 
+                    float(color) / float(0xFFFFF)
+                );
+            }
+
+            float4 frag (v2f IN) : SV_Target
+            {
+                uint2 _Dim;
+                _DataTex.GetDimensions(_Dim.x, _Dim.y);
+
+                uint2 uv = IN.uv * _Dim;
+                uint index = uv.x + uv.y * _Dim.x;
+                int3 gridPos = int3(index & 0x3F, (index >> 6) & 0x3F, (index >> 12) & 0x3F);
+
+                float v[2][2][2];
+                [unroll] for (int x = 0; x <= 1; x++)
+                    [unroll] for (int y = 0; y <= 1; y++)
+                        [unroll] for (int z = 0; z <= 1; z++)
+                            v[x][y][z] = getWeight(gridPos + uint3(x, y, z));
+
+                float3 vertex = 0;
+                float iso = 0;
+                uint surface_edge_count = 0;
+
+                [unroll] for (int x = 0; x <= 1; x++)
+                    [unroll] for (int y = 0; y <= 1; y++)
+                        if (v[x][y][0] * v[x][y][1] <= 0)
+                        {
+                            vertex += gridPos + float3(x, y, abs(v[x][y][0]) / (abs(v[x][y][0]) + abs(v[x][y][1])));
+                            surface_edge_count ++;
+                        }
+
+                [unroll] for (int x = 0; x <= 1; x++)
+                    [unroll] for (int z = 0; z <= 1; z++)
+                        if (v[x][0][z] * v[x][1][z] <= 0)
+                        {
+                            vertex += gridPos + float3(x, abs(v[x][0][z]) / (abs(v[x][0][z]) + abs(v[x][1][z])), z);
+                            surface_edge_count ++;
+                        }
+
+                [unroll] for (int y = 0; y <= 1; y++)
+                    [unroll] for (int z = 0; z <= 1; z++)
+                        if (v[0][y][z] * v[1][y][z] <= 0)
+                        {
+                            vertex += gridPos + float3(abs(v[0][y][z]) / (abs(v[0][y][z]) + abs(v[1][y][z])), y, z);
+                            surface_edge_count ++;
+                        }
+
+                if (surface_edge_count == 0)
+                    return 0;
+
+                vertex /= float(surface_edge_count);
+                
+                return EncodeVertex(vertex / 64.0, getNormal(vertex), 5);
+            }
+            ENDCG
+        }
+
+        Pass
+        {
+            Name "Indices"
+            CGPROGRAM
+            #pragma vertex vert
+            #pragma fragment frag
+            #pragma target 5.0
+
+            uint getIndex(uint3 pos)
+            {
+                uint2 dim;
+                _IndexLookup.GetDimensions(dim.x, dim.y);
+                uint idx = pos.x | (pos.y << 6) | (pos.z << 12);
+                uint2 uv = uint2(idx % dim.x, idx / dim.x);
+
+                return _IndexLookup[uv];
+            }
+            
+            uint4 swap(uint4 data, bool swap)
+            {
+                return swap ? data : data.wzyx;
+            }
+
+            static const uint3 lookup[3] = {
+                uint3(1, 0, 0),
+                uint3(0, 0, 1),
+                uint3(0, 1, 0) 
+            };
+
+            static const uint4 offset[3] = {
+                uint4(0, 0, 0, 0),
+                uint4(1, 0, 0, 1),
+                uint4(1, 1, 0, 0)
+            };
+
+            uint4 frag (v2f IN) : SV_Target
+            {
+                uint2 _Dim;
+                _DataTex.GetDimensions(_Dim.x, _Dim.y);
+
+                uint2 uv = IN.uv * _Dim;
+                uint index = uv.x + uv.y * _Dim.x;
+                int3 gridPos = int3(index & 0x3F, (index >> 6) & 0x3F, (index >> 12) & 0x3F);                
+                
+                uint2 localUV = IN.uv * 2.0 * _Dim - uv * 2;
+                uint localIndex = localUV.x + localUV.y * 2;
+                float iso = 0.0;
+
+                bool solid1 = getWeight(gridPos) > iso;
+                bool solid2 = getWeight(gridPos + lookup[localIndex]) > iso;
+                bool face = solid1 != solid2 && localIndex < 3 && all(gridPos > 0);
+
+                uint a = localIndex;
+                uint b = (localIndex + 1) % 3;
+                uint c = (localIndex + 2) % 3;
+
+                return uint(face) * swap(uint4(
+                    getIndex(gridPos - uint3(offset[a].x, offset[b].x, offset[c].x)),
+                    getIndex(gridPos - uint3(offset[a].y, offset[b].y, offset[c].y)),
+                    getIndex(gridPos - uint3(offset[a].z, offset[b].z, offset[c].z)),
+                    getIndex(gridPos - uint3(offset[a].w, offset[b].w, offset[c].w))
+                ), solid2);
+            }
+            ENDCG
+        }
+
+        Pass
+        {
+            Name "VerticesDC"
             CGPROGRAM
             #pragma vertex vert
             #pragma fragment frag
@@ -191,130 +329,11 @@ Shader "VolumetricPen/DualContouring"
 
                 if (abs(_det) < 1e-3)
                     vertex = mean;
-                
-             //   if (any(vertex <= gridPos) || any(vertex >= gridPos + 1))
-                    vertex = min(max(vertex, gridPos - 1), gridPos + 2);//float4((vertex * 0.5 + mean * 0.5), 0.0);
 
                 //if (any(vertex <= gridPos) || any(vertex >= gridPos + 1))
                 //    vertex = mean;//float4((vertex * 0.5 + mean * 0.5), 0.0);
 
                 return EncodeVertex(vertex / 64.0, getNormal(vertex), 5); //float4(vertex / 64.0 - 0.5, 0.0);
-            }
-            ENDCG
-        }
-
-        Pass
-        {
-            Name "Indices"
-            CGPROGRAM
-            #pragma vertex vert
-            #pragma fragment frag
-            #pragma target 5.0
-
-            uint getIndex(uint3 pos)
-            {
-                uint2 dim;
-                _IndexLookup.GetDimensions(dim.x, dim.y);
-                uint idx = pos.x | (pos.y << 6) | (pos.z << 12);
-                uint2 uv = uint2(idx % dim.x, idx / dim.x);
-
-                return _IndexLookup[uv];
-            }
-            
-            uint4 swap(uint4 data, bool swap)
-            {
-                return swap ? data : data.wzyx;
-            }
-
-            static const uint3 lookup[3] = {
-                uint3(1, 0, 0),
-                uint3(0, 0, 1),
-                uint3(0, 1, 0) 
-            };
-
-            static const uint4 offset[3] = {
-                uint4(0, 0, 0, 0),
-                uint4(1, 0, 0, 1),
-                uint4(1, 1, 0, 0)
-            };
-
-            uint4 frag (v2f IN) : SV_Target
-            {
-                uint2 _Dim;
-                _DataTex.GetDimensions(_Dim.x, _Dim.y);
-
-                uint2 uv = IN.uv * _Dim;
-                uint index = uv.x + uv.y * _Dim.x;
-                int3 gridPos = int3(index & 0x3F, (index >> 6) & 0x3F, (index >> 12) & 0x3F);                
-                
-                uint2 localUV = IN.uv * 2.0 * _Dim - uv * 2;
-                uint localIndex = localUV.x + localUV.y * 2;
-                float iso = 0.0;
-
-                bool solid1 = getWeight(gridPos) > iso;
-                bool solid2 = getWeight(gridPos + lookup[localIndex]) > iso;
-                bool face = solid1 != solid2 && localIndex < 3 && all(gridPos > 0);
-
-                uint a = localIndex;
-                uint b = (localIndex + 1) % 3;
-                uint c = (localIndex + 2) % 3;
-
-                return face * swap(uint4(
-                    getIndex(gridPos - uint3(offset[a].x, offset[b].x, offset[c].x)),
-                    getIndex(gridPos - uint3(offset[a].y, offset[b].y, offset[c].y)),
-                    getIndex(gridPos - uint3(offset[a].z, offset[b].z, offset[c].z)),
-                    getIndex(gridPos - uint3(offset[a].w, offset[b].w, offset[c].w))
-                ), solid2);
-
-                /*bool solid1 = getWeight(gridPos + uint3(0, 0, 0)) > iso;
-                [forcecase] switch(localIndex) {
-                    case 0:
-                        if (gridPos.x > 0 || gridPos.y > 0) {
-                            bool solid2 = getWeight(gridPos + uint3(0, 0, 1)) > iso;
-
-                            if (solid1 != solid2) {
-                                return swap(uint4(
-                                    getIndex(gridPos - uint3(1, 1, 0)),
-                                    getIndex(gridPos - uint3(0, 1, 0)),
-                                    getIndex(gridPos - uint3(0, 0, 0)),
-                                    getIndex(gridPos - uint3(1, 0, 0))
-                                ), solid2);
-                            }
-                        }
-                        break;
-                    case 1:
-                        if (gridPos.x > 0 || gridPos.z > 0) {
-                            bool solid2 = getWeight(gridPos + uint3(0, 1, 0)) > iso;
-
-                            if (solid1 != solid2) {
-                                return swap(uint4(
-                                    getIndex(gridPos - uint3(1, 0, 1)),
-                                    getIndex(gridPos - uint3(0, 0, 1)),
-                                    getIndex(gridPos - uint3(0, 0, 0)),
-                                    getIndex(gridPos - uint3(1, 0, 0))
-                                ), solid1); // for some reason solid1 here
-                            }
-                        }
-                        break;
-                    case 2:
-                        if (gridPos.y > 0 || gridPos.z > 0) {
-                            bool solid2 = getWeight(gridPos + uint3(1, 0, 0)) > iso;
-
-                            if (solid1 != solid2) {
-                                return swap(uint4(
-                                    getIndex(gridPos - uint3(0, 1, 1)),
-                                    getIndex(gridPos - uint3(0, 0, 1)),
-                                    getIndex(gridPos - uint3(0, 0, 0)),
-                                    getIndex(gridPos - uint3(0, 1, 0))
-                                ), solid2);
-                            }
-                        }
-                        break;
-                    default:
-                        return 0;
-                }
-
-                return 0;*/
             }
             ENDCG
         }

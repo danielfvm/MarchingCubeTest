@@ -34,7 +34,7 @@ Shader "GenerateMesh/DualContouring/Write Active Texels"
                 uint2 dim;
                 _DataTex.GetDimensions(dim.x, dim.y);
 
-				return any(_DataTex[IN.uv * dim]);
+				return any(_DataTex[IN.uv * dim] > 0.0) ? 1 : 0;
 			}
 
             ENDCG

@@ -9,6 +9,12 @@ using VRC.Udon.Common.Interfaces;
 
 namespace VRCVolumes
 {
+    public enum VolumeType
+    {
+        MarchingCube,
+        SurfaceNets,
+    }
+
     /// <summary>
     /// Generates a mesh including colliders using a shader + AsyncGPUReadback.
     /// Make sure to first initialize the Volume instance by calling Setup() before Build().
@@ -76,7 +82,7 @@ namespace VRCVolumes
         /// <param name="voxelDimension"></param>
         /// <param name="roundUpToPowerOf2"></param>
         /// <param name="material"></param>
-        public void Setup(Vector3Int voxelDimension, bool roundUpToPowerOf2, Material material)
+        public void Setup(Vector3Int voxelDimension, VolumeType type, bool roundUpToPowerOf2, Material material)
         {
             // Compute a square texture dimension that can contain all the voxels.
             // It is probably not really necessary to limit it to a square texture with power of 2,
@@ -100,22 +106,42 @@ namespace VRCVolumes
             // TODO: We might want to support different types of mesh generation algorithms, therefore the Dimension and 
             // TextureFormat might need to be changed depending on which we want to use.
 
-            // Since we need 15 Vertices at max per Voxel (at least in MarchingCubes) we need 4x4 per Voxel.
-            // We could try different algorithms e.g. Surface Nets that would reduce amount of Vertices per Voxel.
-            tempTexTriangle = new RenderTexture(texDim * 4, texDim * 4, 0, RenderTextureFormat.ARGBFloat);
-            tempTexTriangle.filterMode = FilterMode.Point;
-            tempTexTriangle.Create();
+/*
+            switch (type)
+            {
+            case VolumeType.MarchingCube:*/
+                // Since we need 15 Vertices at max per Voxel (at least in MarchingCubes) we need 4x4 per Voxel.
+                // We could try different algorithms e.g. Surface Nets that would reduce amount of Vertices per Voxel.
+                tempTexTriangle = new RenderTexture(texDim * 4, texDim * 4, 0, RenderTextureFormat.ARGBFloat);
+                tempTexTriangle.filterMode = FilterMode.Point;
+                tempTexTriangle.Create();
 
-            tempTexActive = new RenderTexture(texDim * 4, texDim * 4, 0, RenderTextureFormat.ARGBFloat);
-            tempTexActive.useMipMap = true; // We want to generate mipmaps for the sparse texture algorithm
-            tempTexActive.filterMode = FilterMode.Point;
-            tempTexActive.Create();
+                tempTexActive = new RenderTexture(texDim * 4, texDim * 4, 0, RenderTextureFormat.ARGBFloat);
+                tempTexActive.useMipMap = true; // We want to generate mipmaps for the sparse texture algorithm
+                tempTexActive.filterMode = FilterMode.Point;
+                tempTexActive.Create();
 
-            // This can be slightly smaller, assuming that not all Voxels take up 15 Vertices.
-            // How small it can be is unclear.
-            tempTexCompact = new RenderTexture(texDim * 2, texDim * 2, 0, RenderTextureFormat.ARGBFloat);
-            tempTexCompact.filterMode = FilterMode.Point;
-            tempTexCompact.Create();
+                // This can be slightly smaller, assuming that not all Voxels take up 15 Vertices.
+                // How small it can be is unclear.
+                tempTexCompact = new RenderTexture(texDim * 2, texDim * 2, 0, RenderTextureFormat.ARGBFloat);
+                tempTexCompact.filterMode = FilterMode.Point;
+                tempTexCompact.Create();
+               /* break;
+            case VolumeType.SurfaceNets:
+                tempTexTriangle = new RenderTexture(texDim * 2, texDim * 2, 0, RenderTextureFormat.ARGBFloat);
+                tempTexTriangle.filterMode = FilterMode.Point;
+                tempTexTriangle.Create();
+
+                tempTexActive = new RenderTexture(texDim * 2, texDim * 2, 0, RenderTextureFormat.ARGBFloat);
+                tempTexActive.useMipMap = true; // We want to generate mipmaps for the sparse texture algorithm
+                tempTexActive.filterMode = FilterMode.Point;
+                tempTexActive.Create();
+
+                tempTexCompact = new RenderTexture(texDim, texDim, 0, RenderTextureFormat.ARGBFloat);
+                tempTexCompact.filterMode = FilterMode.Point;
+                tempTexCompact.Create();
+                break;
+            }*/
 
             // MarkDynamic is supposed to make it more optimized in case the mesh updates a lot
             // and indexFormat is set to UInt32 because otherwise it would fail with more than 2^16 vertices.
@@ -124,10 +150,14 @@ namespace VRCVolumes
             tempMesh.bounds = new Bounds(Vector3.zero, Vector3.one);
             tempMesh.indexFormat = UnityEngine.Rendering.IndexFormat.UInt32;
 
+
+
             // Creating large arrays is slow so we do it only once.
             // We generate tempTriangles (aka the indicies) here to only need to do a simple Array.Copy. 
-            tempData = new Color[TextureDimensionInt.x * TextureDimensionInt.y * 2 * 2];
-            tempTriangles = new int[TextureDimensionInt.x * TextureDimensionInt.y * 2 * 2];
+            // TODO: Change back
+            tempData = new Color[tempTexCompact.width * tempTexCompact.height];
+            tempTriangles = new int[tempTexCompact.width * tempTexCompact.height];
+
 
             for (int i = 0; i < tempTriangles.Length; i++)
                 tempTriangles[i] = i;
@@ -254,7 +284,10 @@ namespace VRCVolumes
             mesh.Clear(true);
             mesh.SetVertices(vertices, 0, len, UnityEngine.Rendering.MeshUpdateFlags.DontRecalculateBounds);
             mesh.SetColors(colors, 0, len, UnityEngine.Rendering.MeshUpdateFlags.DontRecalculateBounds);
+
             mesh.SetIndices(triangles, MeshTopology.Triangles, 0, false);
+            //mesh.SetIndices(triangles, MeshTopology.Points, 0, false);
+            //mesh.SetIndices(triangles, MeshTopology.Quads, 0, false);
 
             long timePast = DateTimeOffset.Now.ToUnixTimeMilliseconds() - timeStart;
 

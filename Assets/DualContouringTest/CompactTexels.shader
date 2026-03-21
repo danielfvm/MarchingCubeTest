@@ -32,6 +32,17 @@ Shader "GenerateMesh/DualContouring/Compact Texels"
                 return o;
             }
 
+    		Texture2D<uint> _IndexLookup;
+			uint _Index;
+			uint getIndex(uint idx)
+            {
+                uint2 dim;
+                _IndexLookup.GetDimensions(dim.x, dim.y);
+                uint2 uv = uint2(idx % dim.x, idx / dim.x);
+
+                return _IndexLookup[uv];
+            }
+
             #define WIDTH _TargetSize.x //((uint)_ActiveTexelMap_TexelSize.z)
 			#define HEIGHT _TargetSize.y //((uint)_ActiveTexelMap_TexelSize.w)
 
@@ -96,7 +107,9 @@ Shader "GenerateMesh/DualContouring/Compact Texels"
 				if (uv.x == -1)
 					return 0;
 
-				return _DataTex[uv];
+				int4 data = _DataTex[uv];
+
+				return data;
 			}
 
             ENDCG

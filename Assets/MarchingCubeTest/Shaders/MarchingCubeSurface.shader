@@ -141,7 +141,7 @@ Shader "Custom/MarchingCubeSurface"
             o.Albedo = c.rgb;
             o.Metallic = _Metallic;
             o.Smoothness = _Glossiness;
-            o.Normal = IN.normal;
+            o.Normal = normalWS; // IN.normal;
             o.Alpha = c.a;
         }
         ENDCG

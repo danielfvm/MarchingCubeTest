@@ -1,4 +1,4 @@
-Shader "VRCVolume/MarchingCubeSurface"
+Shader "VRCVolume/Surface"
 {
     Properties
     {
@@ -39,11 +39,8 @@ Shader "VRCVolume/MarchingCubeSurface"
         LOD 200
 
         CGPROGRAM
-        // Physically based Standard lighting model, and enable shadows on all light types
         #pragma surface surf Standard fullforwardshadows vertex:vert
         #pragma shader_feature _SMOOTH_SHADING_ON
-
-        // Use shader model 3.0 target, to get nicer looking lighting
         #pragma target 3.0
 
         sampler2D _MainTex;
@@ -59,7 +56,8 @@ Shader "VRCVolume/MarchingCubeSurface"
             float4 color;
         };
 
-        void vert (inout appdata_full v, out Input o) {
+        void vert (inout appdata_full v, out Input o) 
+        {
             UNITY_INITIALIZE_OUTPUT(Input, o);
 
             float3 normal;

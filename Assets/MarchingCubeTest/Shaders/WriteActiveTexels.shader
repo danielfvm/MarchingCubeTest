@@ -1,4 +1,4 @@
-Shader "GenerateMesh/MarchingCube/Write Active Texels"
+Shader "GenerateMesh/Write Active Texels"
 {
     SubShader
     {
@@ -12,8 +12,7 @@ Shader "GenerateMesh/MarchingCube/Write Active Texels"
 
             #include "UnityCG.cginc"
 
-            Texture2D<float4> _DataTex;
-            // Texture2D<uint4> _DataTex;
+            Texture2D<uint4> _DataTex;
             
             struct v2f
 			{
@@ -29,7 +28,7 @@ Shader "GenerateMesh/MarchingCube/Write Active Texels"
 
                 return o;
             }
-
+			
 			float frag (v2f IN) : SV_Target
 			{
                 uint2 dim;

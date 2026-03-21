@@ -6,6 +6,7 @@ using UnityEngine.UI;
 using VRC.SDK3.Rendering;
 using VRC.SDKBase;
 using VRC.Udon;
+using VRC.Udon.Common;
 using VRC.Udon.Common.Interfaces;
 
 public class DualContouringGenerator : UdonSharpBehaviour
@@ -31,9 +32,11 @@ public class DualContouringGenerator : UdonSharpBehaviour
 
     public Text text;
     private Mesh mesh;
+    private bool inVR;
 
     private void Start()
     {
+        inVR = Networking.LocalPlayer.IsUserInVR();
         passIndices = matDualContouring.FindPass("Indices");
         passVertices = matDualContouring.FindPass("Vertices");
 
@@ -87,17 +90,28 @@ public class DualContouringGenerator : UdonSharpBehaviour
             Triangles[i] = i;
     }
 
+    bool rebuild;
+
     public void Update()
     {
-        if (Input.GetKey(KeyCode.F))
-            Generate();    
+        if (rebuild || Input.GetKey(KeyCode.F))
+        {
+            Generate();
+        }
     }
-bool generating = false;
+
+    public override void InputLookVertical(float value, UdonInputEventArgs args)
+    {
+        rebuild = value > 0.8 && inVR;
+    }
+
     public void Generate()
     {
-        if (generating)
+        if (vertex)
             return;
-        generating = true;
+
+        vertex = true;
+
         // debugWeightData.SetTexture("_MainTex", weightData);
 
         // Compute Vertices
@@ -110,6 +124,7 @@ bool generating = false;
             VRCGraphics.Blit(null, activeVertexData, matWriteActiveTexels);
 
             // Compute CompactSparseTexture
+            matCompactTexels.SetInteger("_Index", 0);
             matCompactTexels.SetTexture("_DataTex", vertexData);
             matCompactTexels.SetTexture("_ActiveTexelMap", activeVertexData);
             matCompactTexels.SetVector("_TargetSize", new Vector2(compactVertexData.width, compactVertexData.height));
@@ -121,23 +136,8 @@ bool generating = false;
             matLookup.SetVector("_TargetSize", new Vector2(indexLookupData.width, indexLookupData.height));
             matLookup.SetInteger("_MaxLod", Mathf.RoundToInt(Mathf.Log(vertexData.width, 2)));
             VRCGraphics.Blit(null, indexLookupData, matLookup);
-        
-            // Update preview texture for debugging
-            debugVertexData.SetTexture("_MainTex", vertexData);
-            debugActiveVertexData.SetTexture("_MainTex", activeVertexData);
-            debugCompactVertexData.SetTexture("_MainTex", compactVertexData);
-        
-            VRCAsyncGPUReadback.Request(compactVertexData, 0, (IUdonEventReceiver)this);
         }
 
-        SendCustomEventDelayedFrames(nameof(Test), 10);
-
-    }
-
-    public void Test()
-    {
-        
-        
         // Compute Indices
         {
             matDualContouring.SetTexture("_IndexLookup", indexLookupData);
@@ -148,30 +148,37 @@ bool generating = false;
             VRCGraphics.Blit(null, activeIndexData, matWriteActiveTexels);
 
             // Compute CompactSparseTexture
+            matCompactTexels.SetTexture("_IndexLookup", indexLookupData);
+            matCompactTexels.SetInteger("_Index", 1);
             matCompactTexels.SetTexture("_DataTex", indexData);
             matCompactTexels.SetTexture("_ActiveTexelMap", activeIndexData);
             matCompactTexels.SetVector("_TargetSize", new Vector2(compactIndexData.width, compactIndexData.height));
             matCompactTexels.SetInteger("_MaxLod", Mathf.RoundToInt(Mathf.Log(indexData.width, 2)));
             VRCGraphics.Blit(null, compactIndexData, matCompactTexels);
-        
-            // Update preview texture for debugging
-            debugIndexData.SetTexture("_MainTex", indexData);
-            debugActiveIndexData.SetTexture("_MainTex", activeIndexData);
-            debugCompactIndexData.SetTexture("_MainTex", compactIndexData);
 
+            VRCAsyncGPUReadback.Request(compactVertexData, 0, (IUdonEventReceiver)this);
             VRCAsyncGPUReadback.Request(compactIndexData, 0, (IUdonEventReceiver)this);
         }
+
+        // Update preview texture for debugging
+        debugVertexData.SetTexture("_MainTex", vertexData);
+        debugActiveVertexData.SetTexture("_MainTex", activeVertexData);
+        debugCompactVertexData.SetTexture("_MainTex", compactVertexData);
+            
+        // Update preview texture for debugging
+        debugIndexData.SetTexture("_MainTex", indexData);
+        debugActiveIndexData.SetTexture("_MainTex", activeIndexData);
+        debugCompactIndexData.SetTexture("_MainTex", compactIndexData);
     }
 
-    Color[] finalColors;
-    int[] finalIndices;
+    bool vertex;
+    public bool triangles = true;
 
     public override void OnAsyncGpuReadbackComplete(VRCAsyncGPUReadbackRequest request)
     {
-        bool vertex = request.width == compactVertexData.width;
-
         if (vertex)
         {
+            vertex = false;
             if (!request.TryGetData(vertexReadback))
                 return;
 
@@ -183,13 +190,23 @@ bool generating = false;
             //int[] triangles = new int[len];
             //Array.Copy(Triangles, triangles, len);
 
-            finalColors = new Color[len];
-            Array.Copy(vertexReadback, finalColors, len);
+            Color[] colors = new Color[len];
+            if (colors.Length > vertexReadback.Length)
+            {
+                Debug.LogError("Shader error!");
+                return;
+            }
+
+            Array.Copy(vertexReadback, colors, len);
             
             //for (int i = 0; i < len; i++)
             //    vertices[i] = new Vector3(vertexReadback[i].r, vertexReadback[i].g, vertexReadback[i].b);
             
             //mesh.SetVertices(vertices, 0, len, UnityEngine.Rendering.MeshUpdateFlags.DontRecalculateBounds);
+            mesh.Clear(true);
+            mesh.SetVertices(new Vector3[len], 0, len, UnityEngine.Rendering.MeshUpdateFlags.DontRecalculateBounds);
+            mesh.SetColors(colors, 0, len, UnityEngine.Rendering.MeshUpdateFlags.DontRecalculateBounds);
+            //mesh.SetIndices(triangles, MeshTopology.Points, 0, false);
         }
         else
         {
@@ -197,22 +214,17 @@ bool generating = false;
                 return;
 
             int len = BitConverter.ToInt32(indexReadback, indexReadback.Length - 4);
-            finalIndices = new int[len * 4];
-            Buffer.BlockCopy(indexReadback, 0, finalIndices, 0, len * 4 * 4);
+            int[] indices = new int[len * 4];
+            Buffer.BlockCopy(indexReadback, 0, indices, 0, len * 4 * 4);
 
-            Debug.Log("Len: " + finalIndices.Length);
-            text.text = "Len: " + finalIndices.Length;
-        }
+            if (triangles)
+            {
+                mesh.SetIndices(indices, MeshTopology.Quads, 0, false);
+               // mesh.RecalculateNormals();
+            }
 
-        if (finalColors != null && finalIndices != null)
-        {
-            mesh.SetVertices(new Vector3[finalColors.Length], 0, finalColors.Length, UnityEngine.Rendering.MeshUpdateFlags.DontRecalculateBounds);
-            mesh.SetColors(finalColors, 0, finalColors.Length, UnityEngine.Rendering.MeshUpdateFlags.DontRecalculateBounds);
-            mesh.SetIndices(finalIndices, MeshTopology.Quads, 0, false);
-
-            generating = false;
-            finalColors = null;
-            finalIndices = null;
+            Debug.Log("Indices: " + indices.Length);
+            text.text = "Indices: " + indices.Length;
         }
     }
 }

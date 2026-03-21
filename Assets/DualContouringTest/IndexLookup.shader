@@ -52,8 +52,8 @@ Shader "VolumetricPen/IndexLookup"
                 if (!any(_ActiveTexelMap.Load(uv, 0)))
                     return 0;
 
-                // The extra <= 10 condition is to prevents shader to crash
-                while (uv.z < _MaxLod  && uv.z <= 10) {
+                // The extra <= 12 condition is to prevents shader to crash
+                while (uv.z < _MaxLod  && uv.z <= 12) {
 					uint subIndex = (uv.x & 0x1) | ((uv.y & 0x1) << 1);
 					[unroll(3)] for (uint j = 0; j < subIndex; j++)
 						index += CountActiveTexels(uint3(uv.xy & ~0x1, uv.z), zOrder[j]);
