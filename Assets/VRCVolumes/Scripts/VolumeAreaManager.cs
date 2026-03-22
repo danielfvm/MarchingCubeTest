@@ -134,7 +134,7 @@ namespace VRCVolumes
             else
                 volumeMaterial.DisableKeyword("_CHUNKED_ON");
 
-            builder.Setup(Vector3Int.one * gridSize, VolumeType.MarchingCube, true, volumeMaterial);
+            builder.Setup(Vector3Int.one * gridSize, true, volumeMaterial);
             chunks = new DataDictionary();
             datas = new DataDictionary();
             tempData = builder.CreateData();

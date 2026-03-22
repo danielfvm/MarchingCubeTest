@@ -209,7 +209,7 @@ MonoBehaviour:
   _udonSharpBackingUdonBehaviour: {fileID: 1991339}
   chunked: 1
   gridSize: 64
-  volumeMaterial: {fileID: 2100000, guid: 2a3a61d549e876f948c552630b2a270c, type: 2}
+  volumeMaterial: {fileID: 2100000, guid: 17289065279595b4eb2e7d6fade5810c, type: 2}
   copyWeightsMaterial: {fileID: 2100000, guid: f18ca25a9506055758bfd059eef17dd1, type: 2}
   editMaterial: {fileID: 2100000, guid: 45ada46811623bf2eb04f2af75086074, type: 2}
   chunkInstantiate: {fileID: 2062814335}
@@ -261,6 +261,13 @@ MonoBehaviour:
     PrefabModifications: []
     SerializationNodes: []
   _udonSharpBackingUdonBehaviour: {fileID: 1991341}
+  texVertices: {fileID: 0}
+  texActiveVertices: {fileID: 0}
+  texCompactVertices: {fileID: 0}
+  texIndexLookup: {fileID: 0}
+  texIndices: {fileID: 0}
+  texActiveIndices: {fileID: 0}
+  texCompactIndices: {fileID: 0}
 --- !u!1 &16267812
 GameObject:
   m_ObjectHideFlags: 0

@@ -6,6 +6,8 @@ Shader "VRCVolume/SurfaceNets"
     Texture2D<uint> _DataTex;
     Texture2D<uint4> _TriangleTex;
     Texture2D<float> _ActiveTex;
+    Texture2D<uint> _IndexLookup;
+
     bool _Collider;
     int3 _VoxelDimension;
     uint2 _TargetSize;
@@ -23,7 +25,7 @@ Shader "VRCVolume/SurfaceNets"
         // 1. We generate the triangles used in the mesh
         Pass
         {
-            Name "Generate"
+            Name "Vertices"
 
             CGPROGRAM
             #pragma shader_feature _CHUNKED_ON
@@ -45,10 +47,8 @@ Shader "VRCVolume/SurfaceNets"
 
 			uint4 frag (v2f IN) : SV_Target
             {
-                uint2 uv = IN.uv * _TargetSize; // TODO: Change with dynamic code
-
-                uint voxelIndex = (uv.x >> 1) + (uv.y >> 1) * _TargetSize.x;
-                uint subIndex = (uv.x & 0x1) | ((uv.y & 0x1) << 1);
+                uint2 uv = IN.uv * _TargetSize;
+                uint voxelIndex = uv.x + uv.y * _TargetSize.x;
 
                 int3 gridPos = int3(
                     voxelIndex % _VoxelDimension.x, 
@@ -56,78 +56,126 @@ Shader "VRCVolume/SurfaceNets"
                     (voxelIndex / _VoxelDimension.x) / _VoxelDimension.y
                 );
 
-                uint i;
-                float2 cubeData[8];
+                float v[2][2][2];
+                int x, y, z;
+                [unroll] for (x = 0; x <= 1; x++)
+                    [unroll] for (y = 0; y <= 1; y++)
+                        [unroll] for (z = 0; z <= 1; z++)
+                            v[x][y][z] = (sample(gridPos + uint3(x, y, z)).x - 0.5) * 2.0;
 
-                [unroll] for (i = 0; i < 8; i++) {
-                    cubeData[i] = sample(gridPos + CornerPositions[i]);
-                }
+                float3 vertex = 0;
+                float iso = 0.0;
+                uint surface_edge_count = 0;
 
-                uint surfaceEdgeCount = 0;
+                [unroll] for (x = 0; x <= 1; x++)
+                    [unroll] for (y = 0; y <= 1; y++)
+                        if ((v[x][y][0] < iso) != (v[x][y][1] < iso))
+                        {
+                            vertex += gridPos + float3(x, y, abs(v[x][y][0]) / (abs(v[x][y][0]) + abs(v[x][y][1])));
+                            surface_edge_count ++;
+                        }
 
-                float3 total = 0;
+                [unroll] for (x = 0; x <= 1; x++)
+                    [unroll] for (z = 0; z <= 1; z++)
+                        if ((v[x][0][z] < iso) != (v[x][1][z] < iso))
+                        {
+                            vertex += gridPos + float3(x, abs(v[x][0][z]) / (abs(v[x][0][z]) + abs(v[x][1][z])), z);
+                            surface_edge_count ++;
+                        } 
 
-                float v1 = sample(gridPos).r;
-                for (i = 0; i < 3; i++) {
-                    float v2 = sample(gridPos + Axis[i]).r;
+                [unroll] for (y = 0; y <= 1; y++)
+                    [unroll] for (z = 0; z <= 1; z++)
+                        if ((v[0][y][z] < iso) != (v[1][y][z] < iso))
+                        {
+                            vertex += gridPos + float3(abs(v[0][y][z]) / (abs(v[0][y][z]) + abs(v[1][y][z])), y, z);
+                            surface_edge_count ++;
+                        }
 
-                    if (v1 < 0.5 && v2 >= 0.5)
-                        surfaceEdgeCount ++;
-                    else if (v1 >= 0.5 && v2 < 0.5)
-                        surfaceEdgeCount ++;
-                }
+                if (surface_edge_count == 0)
+                    return 0;
 
-                /* [unroll] for (i = 0; i < 4; i++) {
-                    {
-                        float3 position_a = gridPos + CornerPositions[i % 4];
-                        float sample_a = cubeData[i % 4];
-                        float3 position_b = gridPos + CornerPositions[(i + 1) % 4];
-                        float sample_b = cubeData[(i + 1) % 4];
+                vertex /= float(surface_edge_count);
 
-                        if (sample_a * sample_b <= 0)
-                            surfaceEdgeCount += 1; 
-                        
-                        total += lerp(position_a, position_b, abs(sample_a) / (abs(sample_a) + abs(sample_b)));
-                    }
-
-                    {
-                        float3 position_a = gridPos + CornerPositions[4 + (i % 4)];
-                        float sample_a = cubeData[4 + (i % 4)];
-                        float3 position_b = gridPos + CornerPositions[4 + ((i + 1) % 4)];
-                        float sample_b = cubeData[4 + ((i + 1) % 4)];
-
-                        if (sample_a * sample_b <= 0)
-                            surfaceEdgeCount += 1; 
-                        
-                        total += lerp(position_a, position_b, abs(sample_a) / (abs(sample_a) + abs(sample_b)));
-                    }
-
-                    {
-                        float3 position_a = gridPos + CornerPositions[i % 4];
-                        float sample_a = cubeData[i % 4];
-                        float3 position_b = gridPos + CornerPositions[4 + ((i + 1) % 4)];
-                        float sample_b = cubeData[4 + ((i + 1) % 4)];
-
-                        if (sample_a * sample_b <= 0)
-                            surfaceEdgeCount += 1; 
-                        
-                        total += lerp(position_a, position_b, abs(sample_a) / (abs(sample_a) + abs(sample_b)));
-                    }
-                } */
-
-                uint color = 1;
-                float3 vertex = gridPos; //total / surfaceEdgeCount;
-                uint mask = surfaceEdgeCount != 0;
-                float3 n = 1;
-
-                return EncodeVertex(vertex / _VoxelDimension, -n, color) * mask;
-
-/*
-                if (_Collider)
-                    return asuint(float4(vertex / _VoxelDimension - 0.5, 1.0)) * mask;
-                else
-                    return EncodeVertex(vertex / _VoxelDimension, -n, color) * mask;*/
+                #ifdef SHADER_API_MOBILE
+                float3 normal = sampleSimpleNormal(vertex);
+                #else
+                float3 normal = sampleHighQualityNormal(vertex);
+                #endif
+                
+                return EncodeVertex(vertex / 64.0, -normal, 5); // TODO: Set color
             } 
+            ENDCG
+        }
+
+        Pass
+        {
+            Name "Indices"
+
+            CGPROGRAM
+            #pragma shader_feature _CHUNKED_ON
+            #pragma vertex vert
+            #pragma fragment frag
+            #pragma target 5.0
+
+            uint4 swap(uint4 data, bool swap)
+            {
+                return swap ? data : data.wzyx;
+            }
+
+            static const uint3 lookup[3] = {
+                uint3(1, 0, 0),
+                uint3(0, 0, 1),
+                uint3(0, 1, 0) 
+            };
+
+            static const uint4 offset[3] = {
+                uint4(0, 0, 0, 0),
+                uint4(1, 0, 0, 1),
+                uint4(1, 1, 0, 0)
+            };
+
+            uint2 dim;
+
+            uint getIndex(int3 pos)
+            {
+                uint idx = pos.x | (pos.y << 6) | (pos.z << 12);
+                uint2 uv = uint2(idx % dim.x, idx / dim.x);
+
+                return _IndexLookup[uv];
+            }
+
+            uint4 frag (v2f IN) : SV_Target
+            {
+                _IndexLookup.GetDimensions(dim.x, dim.y);
+
+                uint2 uv = IN.uv * (_TargetSize >> 1);
+                uint voxelIndex = uv.x + uv.y * (_TargetSize.x >> 1);
+
+                int3 gridPos = int3(
+                    voxelIndex % _VoxelDimension.x, 
+                    (voxelIndex / _VoxelDimension.x) % _VoxelDimension.y, 
+                    (voxelIndex / _VoxelDimension.x) / _VoxelDimension.y
+                );
+                
+                uint2 localUV = IN.uv * _TargetSize - uv * 2;
+                uint localIndex = localUV.x + localUV.y * 2;
+                float iso = 0.5;
+
+                bool solid1 = sample(gridPos).x > iso;
+                bool solid2 = sample(gridPos + lookup[localIndex]).x > iso;
+                bool face = solid1 != solid2 && localIndex < 3 && all(gridPos > 0);
+
+                uint a = localIndex;
+                uint b = (localIndex + 1) % 3;
+                uint c = (localIndex + 2) % 3; 
+ 
+                return uint(face) * swap(uint4(
+                    getIndex(gridPos - uint3(offset[a].x, offset[b].x, offset[c].x)),
+                    getIndex(gridPos - uint3(offset[a].y, offset[b].y, offset[c].y)),
+                    getIndex(gridPos - uint3(offset[a].z, offset[b].z, offset[c].z)),
+                    getIndex(gridPos - uint3(offset[a].w, offset[b].w, offset[c].w))
+                ), solid1);
+            }
             ENDCG
         }
 
@@ -219,6 +267,57 @@ Shader "VRCVolume/SurfaceNets"
 					return 0;
 
 				return _TriangleTex[uv];
+			}
+
+            ENDCG
+        }
+
+        Pass
+        {
+            Name "Lookup"
+
+            CGPROGRAM
+            #pragma vertex vert
+            #pragma fragment frag
+            #pragma target 5.0
+
+            #include "UnityCG.cginc"
+            
+			Texture2D<float> _ActiveTexelMap;
+
+            // TODO: Maybe can combine with compact?
+			inline uint CountActiveTexels(int3 uv, int2 offset)
+			{
+				return (uint)((1 << (uv.z + uv.z)) * _ActiveTexelMap.Load(uv, offset));
+			}
+
+			static const uint2 zOrder[3] = {
+				uint2(0, 0),
+				uint2(1, 0),
+				uint2(0, 1)
+			};
+
+			uint frag (v2f IN) : SV_Target
+			{
+                uint2 dim;
+                _ActiveTexelMap.GetDimensions(dim.x, dim.y);
+                uint3 uv = uint3(IN.uv * dim, 0);
+                uint index = 0;
+
+                if (!any(_ActiveTexelMap.Load(uv, 0)))
+                    return 0;
+
+                // The extra <= 12 condition is to prevents shader to crash
+                while (uv.z < _MaxLod  && uv.z <= 10) {
+					uint subIndex = (uv.x & 0x1) | ((uv.y & 0x1) << 1);
+					[unroll(3)] for (uint j = 0; j < subIndex; j++)
+						index += CountActiveTexels(uint3(uv.xy & ~0x1, uv.z), zOrder[j]);
+
+					uv.xy /= 2;
+					uv.z ++; 
+				}
+
+				return index;
 			}
 
             ENDCG

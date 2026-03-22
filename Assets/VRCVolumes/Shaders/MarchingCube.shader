@@ -33,8 +33,7 @@ Shader "VRCVolume/MarchingCube"
 
 			uint4 frag (v2f IN) : SV_Target
             {
-                uint2 uv = IN.uv * _TargetSize; // TODO: Change with dynamic code
-
+                uint2 uv = IN.uv * _TargetSize;
                 uint voxelIndex = (uv.x >> 2) + (uv.y >> 2) * (_TargetSize.x >> 2);
                 uint subIndex = EncodeZOrder(uv % 4);
                 uint triIndex = subIndex / 3;
