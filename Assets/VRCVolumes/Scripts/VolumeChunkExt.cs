@@ -9,7 +9,38 @@ namespace VRCVolumes
         public static ulong GetKey(this VolumeChunk self) => ((DataList)(object)self)[0].ULong;
         public static MeshFilter GetMeshFilter(this VolumeChunk self) => (MeshFilter)((DataList)(object)self)[1].Reference;
         public static MeshCollider GetMeshCollider(this VolumeChunk self) => (MeshCollider)((DataList)(object)self)[2].Reference;
-        public static DataList GetDataRefs(this VolumeChunk self) => ((DataList)(object)self)[3].DataList;
+        public static DataList GetDataRefs(this VolumeChunk self, VolumeAreaManager manager) {
+            DataList list = ((DataList)(object)self)[3].DataList;
+
+            // Only setup references on demand, allows for preview chunks that do not have no data blocks
+            if (list.Count == 0)
+            {
+                var pos = self.GetIntGridPos();
+                
+                if (manager.chunked)
+                {
+                    list.AddRange(new DataList(new DataToken[] {
+                        manager.GetDataAt(VolumeChunk.GridToKey(pos - new Vector3Int(1, 1, 1))),
+                        manager.GetDataAt(VolumeChunk.GridToKey(pos - new Vector3Int(0, 1, 1))),
+                        manager.GetDataAt(VolumeChunk.GridToKey(pos - new Vector3Int(1, 0, 1))),
+                        manager.GetDataAt(VolumeChunk.GridToKey(pos - new Vector3Int(0, 0, 1))),
+                        manager.GetDataAt(VolumeChunk.GridToKey(pos - new Vector3Int(1, 1, 0))),
+                        manager.GetDataAt(VolumeChunk.GridToKey(pos - new Vector3Int(0, 1, 0))),
+                        manager.GetDataAt(VolumeChunk.GridToKey(pos - new Vector3Int(1, 0, 0))),
+                        manager.GetDataAt(VolumeChunk.GridToKey(pos)),
+                    }));
+                } 
+                else
+                {
+                    list.Add(manager.GetDataAt(VolumeChunk.GridToKey(pos)));
+                }
+            }
+        
+            return list;
+        }
+
+        public static bool WasEdited(this VolumeChunk self) => ((DataList)(object)self)[4].Boolean;
+        public static void MarkEdited(this VolumeChunk self) => ((DataList)(object)self)[4] = true;
 
         // Utils
         public static Vector3Int GetIntGridPos(this VolumeChunk self) => VolumeChunk.KeyToIntGrid(self.GetKey());

@@ -47,7 +47,7 @@ namespace VRCVolumes
         public GameObject Spawn(Transform parent = null)
         {
             // If queue is empty we create a new one
-            if (queue.transform.childCount == 0)
+            if (queue == null || queue.transform.childCount == 0)
                 CreateQueue();
 
             // Remove from queue and activate

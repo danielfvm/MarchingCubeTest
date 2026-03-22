@@ -54,8 +54,8 @@ namespace VRCVolumes
         private DataList buildingQueue;
         private Material material;
         private int passVertices, passIndices, passActive, passCompact, passLookup;
-        public RenderTexture texVertices, texActiveVertices, texCompactVertices;
-        public RenderTexture texIndexLookup, texIndices, texActiveIndices, texCompactIndices;
+        private RenderTexture texVertices, texActiveVertices, texCompactVertices;
+        private RenderTexture texIndexLookup, texIndices, texActiveIndices, texCompactIndices;
         #endregion
 
         private void Cleanup()
@@ -338,7 +338,11 @@ namespace VRCVolumes
                 Buffer.BlockCopy(indexReadback, 0, indices, 0, len * 4);
 
                 mesh.SetIndices(indices, MeshTopology.Quads, 0, false);
-                
+                /*int[] k = new int[mesh.vertices.Length];
+                for (int i = 0; i < k.Length; i++)
+                    k[i] = i;
+                mesh.SetIndices(k, MeshTopology.Points, 0, false);*/
+
                 long timePast = DateTimeOffset.Now.ToUnixTimeMilliseconds() - timeStart;
 
                 if (callback != null)

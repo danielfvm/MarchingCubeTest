@@ -1,9 +1,5 @@
-﻿
-using System;
 using UdonSharp;
-using UnityEditor;
 using UnityEngine;
-using UnityEngine.UI;
 using VRC.SDK3.Data;
 using VRC.SDKBase;
 
@@ -17,16 +13,19 @@ namespace VRCVolumes
         // if true will offset data textures to fix chunk borders for MarchingCubes
         public bool chunked = true;
         public int gridSize = 64;
-        public Material volumeMaterial, copyWeightsMaterial, editMaterial;
-        public BulkInstantiate chunkInstantiate;
         public bool waitForBuildQueue;
+        public Material volumeMaterial, generateMaterial;
+
+        [Header("References")]
+        public BulkInstantiate chunkInstantiate;
+        public Material copyWeightsMaterial;
         #endregion
 
         #region Local Fields
         private VolumeBuilder builder;
         private DataDictionary chunks, datas;
         private RenderTexture tempData, tempTexDataCombined;
-        private int copyPass, clearPass, copySubPass;
+        private int copyPass, copySubPass;
         #endregion
 
         #region Utils
@@ -51,19 +50,7 @@ namespace VRCVolumes
                 return value.AsVolumeChunk();
             
             var gameObject = chunkInstantiate.Spawn(transform);
-            var pos = VolumeChunk.KeyToIntGrid(key);
-            var refs = new DataList(chunked ? new DataToken[] {
-                GetDataAt(VolumeChunk.GridToKey(pos - new Vector3Int(1, 1, 1))),
-                GetDataAt(VolumeChunk.GridToKey(pos - new Vector3Int(0, 1, 1))),
-                GetDataAt(VolumeChunk.GridToKey(pos - new Vector3Int(1, 0, 1))),
-                GetDataAt(VolumeChunk.GridToKey(pos - new Vector3Int(0, 0, 1))),
-                GetDataAt(VolumeChunk.GridToKey(pos - new Vector3Int(1, 1, 0))),
-                GetDataAt(VolumeChunk.GridToKey(pos - new Vector3Int(0, 1, 0))),
-                GetDataAt(VolumeChunk.GridToKey(pos - new Vector3Int(1, 0, 0))),
-                GetDataAt(key),
-            } : new DataToken[] { GetDataAt(key) });
-
-            var chunk = VolumeChunk.Create(gameObject, key, refs);
+            var chunk = VolumeChunk.Create(gameObject, key);
             chunks.SetValue(key, chunk.AsDataToken());
 
             if (!chunked)
@@ -72,7 +59,7 @@ namespace VRCVolumes
             return chunk;
         }
 
-        private RenderTexture GetDataAt(ulong key)
+        public RenderTexture GetDataAt(ulong key)
         {
             if (datas.TryGetValue(key, out DataToken value))
                 return (RenderTexture)value.Reference;
@@ -81,9 +68,18 @@ namespace VRCVolumes
             datas.SetValue(key, chunk);
 
             // Required because when creating a new RenderTexture it is not guranteed to be empty
-            VRCGraphics.Blit(null, chunk, copyWeightsMaterial, clearPass);
+            var gridPos = VolumeChunk.KeyToGrid(key);
+            GenerateChunkData(gridPos, chunk);
 
             return chunk;
+        }
+
+        private void GenerateChunkData(Vector3 gridPos, RenderTexture data)
+        {
+            generateMaterial.SetVector("_ChunkPos", gridPos);
+            generateMaterial.SetVector("_TargetSize", builder.TextureDimension);
+            generateMaterial.SetVector("_VoxelDimension", Vector3.one * gridSize);
+            VRCGraphics.Blit(null, data, generateMaterial);
         }
 
         private VolumeChunk[] GetChunksInBounds(Bounds bounds)
@@ -150,7 +146,8 @@ namespace VRCVolumes
 
             copyPass = copyWeightsMaterial.FindPass("Copy");
             copySubPass = copyWeightsMaterial.FindPass("CopySub");
-            clearPass = copyWeightsMaterial.FindPass("Clear");
+
+            LoadChunks(new Bounds(Vector3.zero, Vector3.one * 4));
         }
 
         public void OnDestroy()
@@ -160,7 +157,9 @@ namespace VRCVolumes
                 ((RenderTexture)list[i].Reference).Release();
         }
 
-        private DataList buildQueue = new DataList();
+        // We use a dict instead of a list because that allows us to not rebuild a mesh multiple times
+        // downside order gets lost
+        private DataDictionary buildQueue = new DataDictionary();
 
         public void Edit(Bounds bounds, Material material, int pass = -1)
         {
@@ -183,12 +182,48 @@ namespace VRCVolumes
 
             /// Add Chunks to update queue ///
             foreach (VolumeChunk chunk in GetChunksInBounds(bounds))
-                buildQueue.Add(chunk.AsDataToken());
+            {
+                chunk.MarkEdited();
+                buildQueue[chunk.GetKey()] = chunk.AsDataToken();
+            }
+        }
+
+        public void LoadChunks(Bounds bounds)
+        {
+            foreach (VolumeChunk chunk in GetChunksInBounds(bounds))
+                buildQueue[chunk.GetKey()] = chunk.AsDataToken();
         }
 
         private Texture GetChunkData(VolumeChunk chunk)
         {
-            var data = chunk.GetDataRefs();
+            // If this chunk was not edited yet, we do not have any data chunks
+            // so instead we will just temporarily generate a preview, we do this
+            // to save on memory. This is only required when using this for terrain.
+            if (!chunk.WasEdited())
+            {
+                if (chunked)
+                {
+                    copyWeightsMaterial.SetVector("_TargetSize", builder.TextureDimension);
+                    for (int i = 0; i < 8; i++)
+                    {
+                        GenerateChunkData(chunk.GetGridPos() - new Vector3Int(1 - i % 2, 1 - i / 2 % 2, 1 - i / 4), tempData);
+
+                        copyWeightsMaterial.SetTexture("_DataTex", tempData);
+                        copyWeightsMaterial.SetInteger("_TextureIdx", i);
+                        VRCGraphics.Blit(null, tempTexDataCombined, copyWeightsMaterial, copySubPass);
+                    }
+
+                    return tempTexDataCombined;
+                }
+                else
+                {
+                    GenerateChunkData(chunk.GetGridPos(), tempData);
+                    return tempData;
+                }
+            }
+
+
+            var data = chunk.GetDataRefs(this);
 
             if (chunked)
             {
@@ -212,9 +247,10 @@ namespace VRCVolumes
         {
             if ((!waitForBuildQueue || !builder.IsBuilding) && buildQueue.Count > 0)
             {
-                VolumeChunk chunk = buildQueue[0].AsVolumeChunk();
+                var key = buildQueue.GetKeys()[0];
+                VolumeChunk chunk = buildQueue[key].AsVolumeChunk();
                 builder.Build(false, GetChunkData(chunk), chunk.GetMeshFilter().sharedMesh);
-                buildQueue.RemoveAt(0);
+                buildQueue.Remove(key);
             }
         }
 

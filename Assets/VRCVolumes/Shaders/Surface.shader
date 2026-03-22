@@ -26,7 +26,7 @@ Shader "VRCVolume/Surface"
         uint qn_y = d.z & 0x3FF;
         uint qn_z = (d.z >> 10) & 0x3FF;
 
-        position = float3(qp_x, qp_y, qp_z) / float(0x3FF) - 0.5;
+        position = (float3(qp_x, qp_y, qp_z) / float(0x3FF)) * (64.0 / 62.0) - 0.5; // TODO: Make this flexible!!!!
         normal   = float3(qn_x, qn_y, qn_z) / float(0x3FF) * 2.0 - 1.0;
         color = uint(encoded.w * float(0xFFFFF) + 0.5);
     }
@@ -53,7 +53,7 @@ Shader "VRCVolume/Surface"
             float3 normal : NORMAL;
             float2 texcoord;
             float3 worldPos;
-            float4 color;
+            nointerpolation float4 color;
         };
 
         void vert (inout appdata_full v, out Input o) 
@@ -80,10 +80,10 @@ Shader "VRCVolume/Surface"
         {
             fixed4 c = IN.color * _Color;
 
+            #ifndef _SMOOTH_SHADING_ON
             float3 dpdx = ddx(IN.worldPos);
             float3 dpdy = ddy(IN.worldPos);
-
-            #ifndef _SMOOTH_SHADING_ON
+            
             IN.normal = -normalize(cross(dpdx, dpdy));
             #endif
 

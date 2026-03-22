@@ -1,4 +1,4 @@
-Shader "VRCVolume/GenerateWeights"
+Shader "VRCVolume/Paint"
 {
     CGINCLUDE
 
@@ -71,7 +71,7 @@ Shader "VRCVolume/GenerateWeights"
                 float penWeight = clamp((_SphereRadius - sdCapsule(gridPos, _SphereFrom, _SphereTo)) / k + 0.5, 0, 1.0);
 
                 weight = max(weight, penWeight);
-                if (penWeight > 0.5)
+                if (penWeight > 0.25)
                     color = _SphereColor;
 
                 // weight: 0 = Air, 1 = Solid

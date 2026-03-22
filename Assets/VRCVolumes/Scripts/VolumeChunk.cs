@@ -34,7 +34,7 @@ namespace VRCVolumes
             return x | (y << 20) | (z << 40);
         }
 
-        public static VolumeChunk Create(GameObject self, ulong key, DataList dataRefs)
+        public static VolumeChunk Create(GameObject self, ulong key)
         {
             var gridPos = KeyToIntGrid(key);
 
@@ -56,7 +56,8 @@ namespace VRCVolumes
                 key,
                 meshFilter,
                 meshCollider,
-                dataRefs,
+                new DataList(),
+                false,
             });
         }
     }

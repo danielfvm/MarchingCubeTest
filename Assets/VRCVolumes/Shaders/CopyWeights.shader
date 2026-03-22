@@ -76,32 +76,5 @@ Shader "VRCVolume/CopyWeights"
 
             ENDCG
         }
-
-        Pass
-        {
-            Name "Clear"
-            CGPROGRAM
-            #pragma vertex vert
-            #pragma fragment frag
-            #pragma target 5.0
-
-            #include "UnityCG.cginc" 
-
-            v2f vert (appdata_base v)
-            {
-                v2f o;
-                o.pos = UnityObjectToClipPos(v.vertex);
-                o.uv = v.texcoord;
-
-                return o;
-            }
-
-			uint frag (v2f IN) : SV_Target 
-            { 
-                return 0; 
-            }
-
-            ENDCG
-        }
     }
 }

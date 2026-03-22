@@ -1,5 +1,10 @@
 Shader "VRCVolume/SurfaceNets"
 {
+    Properties
+    {
+        _Voxelness ("Voxelness", Range(0, 1)) = 0
+    }
+
     CGINCLUDE
 
     // Uniforms
@@ -13,6 +18,8 @@ Shader "VRCVolume/SurfaceNets"
     uint2 _TargetSize;
     uint2 _DataSize;
     uint _MaxLod;
+
+    float _Voxelness;
 
     #include "MarchingCubeTables.cginc"
     #include "UnityCG.cginc"
@@ -28,7 +35,9 @@ Shader "VRCVolume/SurfaceNets"
             Name "Vertices"
 
             CGPROGRAM
-            #pragma shader_feature _CHUNKED_ON
+            
+            #pragma shader_feature _CHUNKED_ON 
+            #pragma shader_feature _VOXEL_ON
             #pragma vertex vert
             #pragma fragment frag
             #pragma target 5.0
@@ -50,18 +59,23 @@ Shader "VRCVolume/SurfaceNets"
                 uint2 uv = IN.uv * _TargetSize;
                 uint voxelIndex = uv.x + uv.y * _TargetSize.x;
 
+                _VoxelDimension += 2;
                 int3 gridPos = int3(
                     voxelIndex % _VoxelDimension.x, 
                     (voxelIndex / _VoxelDimension.x) % _VoxelDimension.y, 
                     (voxelIndex / _VoxelDimension.x) / _VoxelDimension.y
                 );
+                _VoxelDimension -= 2;
 
-                float v[2][2][2];
+                float2 v[2][2][2];
                 int x, y, z;
                 [unroll] for (x = 0; x <= 1; x++)
                     [unroll] for (y = 0; y <= 1; y++)
                         [unroll] for (z = 0; z <= 1; z++)
-                            v[x][y][z] = (sample(gridPos + uint3(x, y, z)).x - 0.5) * 2.0;
+                        {
+                            v[x][y][z] = sample(gridPos + uint3(x, y, z));
+                            v[x][y][z].x = (v[x][y][z].x - 0.5) * 2.0;
+                        }
 
                 float3 vertex = 0;
                 float iso = 0.0;
@@ -69,25 +83,25 @@ Shader "VRCVolume/SurfaceNets"
 
                 [unroll] for (x = 0; x <= 1; x++)
                     [unroll] for (y = 0; y <= 1; y++)
-                        if ((v[x][y][0] < iso) != (v[x][y][1] < iso))
+                        if ((v[x][y][0].x < iso) != (v[x][y][1].x < iso))
                         {
-                            vertex += gridPos + float3(x, y, abs(v[x][y][0]) / (abs(v[x][y][0]) + abs(v[x][y][1])));
+                            vertex += gridPos + float3(x, y, abs(v[x][y][0].x) / (abs(v[x][y][0].x) + abs(v[x][y][1].x)));
                             surface_edge_count ++;
                         }
 
                 [unroll] for (x = 0; x <= 1; x++)
                     [unroll] for (z = 0; z <= 1; z++)
-                        if ((v[x][0][z] < iso) != (v[x][1][z] < iso))
+                        if ((v[x][0][z].x < iso) != (v[x][1][z].x < iso))
                         {
-                            vertex += gridPos + float3(x, abs(v[x][0][z]) / (abs(v[x][0][z]) + abs(v[x][1][z])), z);
+                            vertex += gridPos + float3(x, abs(v[x][0][z].x) / (abs(v[x][0][z].x) + abs(v[x][1][z].x)), z);
                             surface_edge_count ++;
                         } 
 
                 [unroll] for (y = 0; y <= 1; y++)
                     [unroll] for (z = 0; z <= 1; z++)
-                        if ((v[0][y][z] < iso) != (v[1][y][z] < iso))
+                        if ((v[0][y][z].x < iso) != (v[1][y][z].x < iso))
                         {
-                            vertex += gridPos + float3(abs(v[0][y][z]) / (abs(v[0][y][z]) + abs(v[1][y][z])), y, z);
+                            vertex += gridPos + float3(abs(v[0][y][z].x) / (abs(v[0][y][z].x) + abs(v[1][y][z].x)), y, z);
                             surface_edge_count ++;
                         }
 
@@ -95,14 +109,19 @@ Shader "VRCVolume/SurfaceNets"
                     return 0;
 
                 vertex /= float(surface_edge_count);
+                vertex = lerp(vertex, gridPos, _Voxelness);
+
 
                 #ifdef SHADER_API_MOBILE
                 float3 normal = sampleSimpleNormal(vertex);
                 #else
                 float3 normal = sampleHighQualityNormal(vertex);
                 #endif
+
+                // Sample color by surface
+                uint color = v[uint(normal.x * 0.9 + 1)][uint(normal.y * 0.9 + 1)][uint(normal.z * 0.9 + 1)].y;
                 
-                return EncodeVertex(vertex / 64.0, -normal, 5); // TODO: Set color
+                return EncodeVertex(vertex / (_VoxelDimension + 2), -normal, color);
             } 
             ENDCG
         }
@@ -138,8 +157,10 @@ Shader "VRCVolume/SurfaceNets"
 
             uint getIndex(int3 pos)
             {
-                uint idx = pos.x | (pos.y << 6) | (pos.z << 12);
+                _VoxelDimension += 2;
+                uint idx = pos.x + pos.y * _VoxelDimension.x + pos.z * _VoxelDimension.x * _VoxelDimension.y;
                 uint2 uv = uint2(idx % dim.x, idx / dim.x);
+                _VoxelDimension -= 2;
 
                 return _IndexLookup[uv];
             }
@@ -151,11 +172,13 @@ Shader "VRCVolume/SurfaceNets"
                 uint2 uv = IN.uv * (_TargetSize >> 1);
                 uint voxelIndex = uv.x + uv.y * (_TargetSize.x >> 1);
 
+                _VoxelDimension += 2;
                 int3 gridPos = int3(
                     voxelIndex % _VoxelDimension.x, 
                     (voxelIndex / _VoxelDimension.x) % _VoxelDimension.y, 
                     (voxelIndex / _VoxelDimension.x) / _VoxelDimension.y
-                );
+                ) + 2;
+                _VoxelDimension -= 2;
                 
                 uint2 localUV = IN.uv * _TargetSize - uv * 2;
                 uint localIndex = localUV.x + localUV.y * 2;
@@ -163,7 +186,7 @@ Shader "VRCVolume/SurfaceNets"
 
                 bool solid1 = sample(gridPos).x > iso;
                 bool solid2 = sample(gridPos + lookup[localIndex]).x > iso;
-                bool face = solid1 != solid2 && localIndex < 3 && all(gridPos > 0);
+                bool face = solid1 != solid2 && localIndex < 3 && all(gridPos <= _VoxelDimension + 1);
 
                 uint a = localIndex;
                 uint b = (localIndex + 1) % 3;
