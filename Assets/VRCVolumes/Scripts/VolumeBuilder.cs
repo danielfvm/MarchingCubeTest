@@ -1,7 +1,9 @@
 ﻿
 using System;
 using UdonSharp;
+using Unity.Mathematics;
 using UnityEngine;
+using UnityEngine.Analytics;
 using VRC.SDK3.Data;
 using VRC.SDK3.Rendering;
 using VRC.SDKBase;
@@ -341,17 +343,28 @@ namespace VRCVolumes
                     // TODO: This is an issue
                     var meshCollider = collider.sharedMesh;
 
-                    meshCollider.Clear(true);
+                    if (meshCollider == null)
+                    {
+                        meshCollider = new Mesh();         
+                        meshCollider.MarkDynamic();
+                        meshCollider.bounds = new Bounds(Vector3.zero, Vector3.one);
+                    }
+                    else
+                        meshCollider.Clear(true);
+                        
                     meshCollider.SetVertices(vertices, 0, vertices.Length, UnityEngine.Rendering.MeshUpdateFlags.DontRecalculateBounds);
                     meshCollider.SetIndices(indices, MeshTopology.Quads, 0, false);
-
 
                     // This is required in order to force the collider to update
                     collider.sharedMesh = null;
                     collider.sharedMesh = meshCollider;
+                    collider.enabled = vertices.Length > 0;
                 }
             }
         }
+
+        private Color[] colors;
+        private Vector3[] vertices;
 
         public override void OnAsyncGpuReadbackComplete(VRCAsyncGPUReadbackRequest request)
         {
@@ -412,17 +425,12 @@ namespace VRCVolumes
                     return;
                 }
 
-                var colors = new Color[len];
+                colors = new Color[len];
                 Array.Copy(vertexReadback, colors, len);
 
                 // if MeshCollider is used, requires proper vertex coords => Convert data from Color[] to Vector3[], 
                 // otherwise vertices are just (0,0,0) and the vertex shader transforms the vertices using the color data
-                Vector3[] vertices = new Vector3[len];
-
-                // Update mesh with as few compute as possible (e.g. by disabling recalculating bounds which is default behaviour)
-                mesh.Clear(true);
-                mesh.SetVertices(vertices, 0, len, UnityEngine.Rendering.MeshUpdateFlags.DontRecalculateBounds);
-                mesh.SetColors(colors, 0, len, UnityEngine.Rendering.MeshUpdateFlags.DontRecalculateBounds);
+                vertices = new Vector3[len];
 
                 if (volumeType == VolumeType.Cloud)
                 {
@@ -430,8 +438,6 @@ namespace VRCVolumes
                     Array.Copy(triangles, indices, indices.Length);
                     mesh.SetIndices(indices, MeshTopology.Points, 0, false);
                 }
-
-                // Debug.Log("Vertices len: " + len);
             }
             else
             {
@@ -448,13 +454,15 @@ namespace VRCVolumes
                     Debug.LogError($"[{name}][VolumeBuilder][Index][ERR]: Gpu Readback returned length of {len} but max is {indexReadback.Length}, was there an error with the shader material?");
                     return;
                 }
-                
+
                 int[] indices = new int[len];
                 Buffer.BlockCopy(indexReadback, 0, indices, 0, len * 4);
 
+                // Update mesh with as few compute as possible (e.g. by disabling recalculating bounds which is default behaviour)
+                mesh.Clear(true);
+                mesh.SetVertices(vertices, 0, vertices.Length, UnityEngine.Rendering.MeshUpdateFlags.DontRecalculateBounds);
+                mesh.SetColors(colors, 0, colors.Length, UnityEngine.Rendering.MeshUpdateFlags.DontRecalculateBounds);
                 mesh.SetIndices(indices, MeshTopology.Quads, 0, false);
-
-                // Debug.Log("Indices len: " + len);
             }
         }
     }

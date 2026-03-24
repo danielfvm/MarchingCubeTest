@@ -309,6 +309,8 @@ namespace VRCVolumes
                     ulong key = VolumeChunk.GridToKey(pos);
                     if (!IsChunkLoaded(key))
                         LoadChunk(GetChunkAt(key));
+
+                    // TODO: Optionally disable/enable chunk meshcollider here
                 }
             }
         }

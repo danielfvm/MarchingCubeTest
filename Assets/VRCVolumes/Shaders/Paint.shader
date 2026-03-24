@@ -46,7 +46,7 @@ Shader "VRCVolume/Paint"
     {
         Pass
         {
-            Name "Line"
+            Name "Paint"
             CGPROGRAM
             #pragma vertex vert
             #pragma fragment frag

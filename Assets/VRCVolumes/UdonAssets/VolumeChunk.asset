@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c333ccfdd0cbdbc4ca30cef2dd6e6b9b, type: 3}
   m_Name: VolumeChunk
   m_EditorClassIdentifier: 
-  serializedUdonProgramAsset: {fileID: 11400000, guid: f0e910eb39ed49d4f9b4becfc9d2e6b5, type: 2}
+  serializedUdonProgramAsset: {fileID: 11400000, guid: c8f26ccadb779ad0bbeb1e20ecca65ef, type: 2}
   udonAssembly: 
   assemblyError: 
   sourceCsScript: {fileID: 11500000, guid: 9fa35d41c159a61d3bd691f984d7ce99, type: 3}
