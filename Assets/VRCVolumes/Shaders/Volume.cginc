@@ -1,17 +1,37 @@
-struct v2f
+uint4 EncodeVertex(float3 position, float3 normal, uint color)
 {
-    float4 pos : SV_POSITION;
-    float2 uv : TEXCOORD0;
-};
+    uint3 qp = uint3(saturate(position) * 0x3FF);
+    uint3 qn = uint3((normalize(normal) * 0.5 + 0.5) * 0x3FF);
 
-v2f vert (appdata_base v)
-{
-    v2f o;
-    o.pos = UnityObjectToClipPos(v.vertex);
-    o.uv = v.texcoord;
-
-    return o;
+    return asuint(float4(
+        (qp.x | (qp.y << 10)) / float(0xFFFFF), 
+        (qp.z | (qn.x << 10)) / float(0xFFFFF), 
+        (qn.y | (qn.z << 10)) / float(0xFFFFF), 
+        float(color) / float(0xFFFFF)
+    ));
 }
+
+void DecodeVertex(float4 encoded, out float3 position, out float3 normal, out uint color)
+{
+    uint3 d = uint3(
+        encoded.x * float(0xFFFFF) + 0.5,
+        encoded.y * float(0xFFFFF) + 0.5,
+        encoded.z * float(0xFFFFF) + 0.5
+    );
+
+    uint qp_x = d.x & 0x3FF;
+    uint qp_y = (d.x >> 10) & 0x3FF;
+    uint qp_z = d.y & 0x3FF;
+
+    uint qn_x = (d.y >> 10) & 0x3FF;
+    uint qn_y = d.z & 0x3FF;
+    uint qn_z = (d.z >> 10) & 0x3FF;
+
+    position = (float3(qp_x, qp_y, qp_z) / float(0x3FF)) * (64.0 / 62.0) - 0.5; // TODO: Make this flexible!!!!
+    normal   = float3(qn_x, qn_y, qn_z) / float(0x3FF) * 2.0 - 1.0;
+    color = uint(encoded.w * float(0xFFFFF) + 0.5);
+}
+
 
 uint EncodeZOrder(uint2 coord)
 {
@@ -27,9 +47,12 @@ uint EncodeZOrder(uint2 coord)
     return index;
 }
 
+
+#ifdef ImplSample
+
 float2 sample(int3 pos)
 {
-    #if _CHUNKED_ON
+    #ifdef _CHUNKED_ON
     int3 p = clamp((pos * 2) / _VoxelDimension, 0, 1);
 
     pos -= (p * 2 - 1) * _VoxelDimension / 2;
@@ -47,7 +70,6 @@ float2 sample(int3 pos)
 
     return float2(float(data >> 8) / 0xFFFF, data & 0xFF);
 }
-
 
 float sampleWeight(float3 pos)
 {
@@ -77,16 +99,4 @@ float3 sampleSimpleNormal(float3 pos)
         sample(pos + int3(0,0,1)).r - w
     ));
 }
-
-uint4 EncodeVertex(float3 position, float3 normal, uint color)
-{
-    uint3 qp = uint3(saturate(position) * 0x3FF);
-    uint3 qn = uint3((normalize(normal) * 0.5 + 0.5) * 0x3FF);
-
-    return asuint(float4(
-        (qp.x | (qp.y << 10)) / float(0xFFFFF), 
-        (qp.z | (qn.x << 10)) / float(0xFFFFF), 
-        (qn.y | (qn.z << 10)) / float(0xFFFFF), 
-        float(color) / float(0xFFFFF)
-    ));
-}
+#endif

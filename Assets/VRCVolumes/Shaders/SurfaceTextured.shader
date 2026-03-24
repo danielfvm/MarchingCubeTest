@@ -1,39 +1,70 @@
-Shader "VRCVolume/Surface"
+Shader "VRCVolume/SurfaceTextured"
 {
     Properties
     {
-        _ColorPalette ("Color Palette", 2D) = "white" {}
         _Color ("Color", Color) = (1,1,1,1)
         _Glossiness ("Smoothness", Range(0,1)) = 0.5
         _Metallic ("Metallic", Range(0,1)) = 0.0
-        [Toggle(_SMOOTH_SHADING_ON)] _SmoothShading ("Smooth Shading", Float) = 1
+
+        _DirtTex_1 ("Dirt Texture 1", 2D) = "green" {}
+        _DirtColor_1 ("Dirt 1 Color", Color) = (1,1,1,1)
+        _DirtTex_2 ("Dirt Texture 2", 2D) = "green" {}
+        _DirtColor_2 ("Dirt 2 Color", Color) = (1,1,1,1)
+
+        _TriWeights("Tri Weights", Vector) = (1,1,1,1)
+
+        [Space(10)]
+        _DirtSurfaceY ("Dirt Surface Y", float) = 50
+        _DirtBottomY ("Dirt Bottom Y", float) = 0
+
+        _NormalRounding ("Normal Rounding", float) = 1
+
+        [Space(10)]
+        _DebugFloat ("Debug Float", float) = 0
+        [Toggle] _DebugBool ("Debug Bool", int) = 0
     }
 
     SubShader
     {
-        Tags { "RenderType"="Opaque" }
+        Tags { "RenderType"="Opaque" "Queue"="Geometry-150" }
         Cull Back
         LOD 200
 
         CGPROGRAM
         #pragma surface surf Standard fullforwardshadows vertex:vert
-        #pragma shader_feature _SMOOTH_SHADING_ON
         #pragma target 3.0
 
+        #include "UnityCG.cginc"
         #include "Volume.cginc"
+        #include "../../krajsy/TriplanarFunctions.cginc"
+        #include "../../krajsy/NoiseFunctions.cginc"
 
-        sampler2D _MainTex;
-        sampler2D _ColorPalette;
-        float4 _ColorPalette_TexelSize;
+        sampler2D _DirtTex_1;
+        sampler2D _DirtTex_2;
+        float4 _DirtTex_1_ST;
+        float4 _DirtTex_2_ST;
 
         struct Input
         {
-            float2 uv_MainTex;
             float3 normal : NORMAL;
             float2 texcoord;
             float3 worldPos;
-            nointerpolation float4 color;
+            float color;
         };
+
+        half _Glossiness;
+        half _Metallic;
+        fixed4 _Color;
+
+        fixed4 _DirtColor_1;
+        fixed4 _DirtColor_2;
+
+        fixed4 _TriWeights;
+
+        float _NormalRounding;
+
+        float _DebugFloat;
+        bool _DebugBool;
 
         void vert (inout appdata_full v, out Input o) 
         {
@@ -43,34 +74,37 @@ Shader "VRCVolume/Surface"
             uint colorIdx;
             DecodeVertex(v.color, v.vertex.xyz, normal, colorIdx);
 
-            o.color = tex2Dlod(_ColorPalette, float4((colorIdx + 0.5) * _ColorPalette_TexelSize.x, 0.5, 0, 0));
+            o.color = colorIdx;
             o.texcoord = v.texcoord;
+            o.worldPos = mul(unity_ObjectToWorld, v.vertex).xyz;
             o.normal = UnityObjectToWorldNormal(normal);
         }
-
-        half _Glossiness;
-        half _Metallic;
-        fixed4 _Color;
 
         UNITY_INSTANCING_BUFFER_START(Props)
         UNITY_INSTANCING_BUFFER_END(Props)
 
         void surf (Input IN, inout SurfaceOutputStandard o)
         {
-            fixed4 c = IN.color * _Color;
+            fixed4 col = 0;
 
-            #ifndef _SMOOTH_SHADING_ON
-            float3 dpdx = ddx(IN.worldPos);
-            float3 dpdy = ddy(IN.worldPos);
-            
-            IN.normal = -normalize(cross(dpdx, dpdy));
-            #endif
+            float3 worldPos = IN.worldPos;
 
-            o.Albedo = c.rgb;
+            _TriWeights.xyz *= _TriWeights.w;
+
+            float3 roundedNormal = normalize(round(IN.normal * _NormalRounding) / _NormalRounding);
+
+            fixed4 Dirt = TriplanarSampleTest(_DirtTex_1, _DirtTex_1_ST.xy, _DirtTex_1_ST.zw, worldPos, roundedNormal) * _DirtColor_1;
+            fixed4 Grass = TriplanarSampleTest(_DirtTex_2, _DirtTex_2_ST.xy, _DirtTex_2_ST.zw, worldPos, roundedNormal) * _DirtColor_2;
+
+            col = lerp(Dirt, Grass, saturate(IN.color)) * _Color;
+
+            o.Albedo = col.rgb;
+            // Metallic and smoothness come from slider variables
             o.Metallic = _Metallic;
-            o.Smoothness = _Glossiness;
             o.Normal = IN.normal;
-            o.Alpha = c.a;
+            o.Smoothness = _Glossiness;
+            o.Occlusion = 1;
+            o.Alpha = col.a;
         }
         ENDCG
 

@@ -55,9 +55,18 @@ Shader "VRCVolume/Generate"
             #pragma fragment frag
             #pragma target 5.0
 
+            #include "../../krajsy/NoiseFunctions.cginc"
+
 			void encode(int3 gridPos, inout float weight, inout uint color)
             { 
-                weight = 1.0 - distance(gridPos, 0) * 0.01;
+                float y = gnoise(gridPos * 0.1);
+                float k = (gnoise(gridPos * 0.05) * 4.0 + 0.1); // mountain heights
+
+                weight = clamp(y - gridPos.y * 0.1 * k - 2.0, 0, 1);
+
+                //weight = clamp(-gridPos.y / 10.0 + (sin(gridPos.x * 0.1) + sin(gridPos.z * 0.1)) * 0.5 - 2.0, 0, 1);
+                color = gridPos.y < -22 * y - 10 ? 0 : 1;
+                //weight = 1.0 - distance(gridPos, 0) * 0.01;
             }
 
             ENDCG

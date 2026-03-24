@@ -17,30 +17,38 @@ namespace VRCVolumes
             {
                 var pos = self.GetIntGridPos();
                 
-                if (manager.chunked)
+                if (manager.Chunked)
                 {
                     list.AddRange(new DataList(new DataToken[] {
-                        manager.GetDataAt(VolumeChunk.GridToKey(pos - new Vector3Int(1, 1, 1))),
-                        manager.GetDataAt(VolumeChunk.GridToKey(pos - new Vector3Int(0, 1, 1))),
-                        manager.GetDataAt(VolumeChunk.GridToKey(pos - new Vector3Int(1, 0, 1))),
-                        manager.GetDataAt(VolumeChunk.GridToKey(pos - new Vector3Int(0, 0, 1))),
-                        manager.GetDataAt(VolumeChunk.GridToKey(pos - new Vector3Int(1, 1, 0))),
-                        manager.GetDataAt(VolumeChunk.GridToKey(pos - new Vector3Int(0, 1, 0))),
-                        manager.GetDataAt(VolumeChunk.GridToKey(pos - new Vector3Int(1, 0, 0))),
-                        manager.GetDataAt(VolumeChunk.GridToKey(pos)),
+                        manager.GetDataAt(VolumeChunk.GridToKey(pos - new Vector3Int(1, 1, 1))).AsDataToken(),
+                        manager.GetDataAt(VolumeChunk.GridToKey(pos - new Vector3Int(0, 1, 1))).AsDataToken(),
+                        manager.GetDataAt(VolumeChunk.GridToKey(pos - new Vector3Int(1, 0, 1))).AsDataToken(),
+                        manager.GetDataAt(VolumeChunk.GridToKey(pos - new Vector3Int(0, 0, 1))).AsDataToken(),
+                        manager.GetDataAt(VolumeChunk.GridToKey(pos - new Vector3Int(1, 1, 0))).AsDataToken(),
+                        manager.GetDataAt(VolumeChunk.GridToKey(pos - new Vector3Int(0, 1, 0))).AsDataToken(),
+                        manager.GetDataAt(VolumeChunk.GridToKey(pos - new Vector3Int(1, 0, 0))).AsDataToken(),
+                        manager.GetDataAt(VolumeChunk.GridToKey(pos)).AsDataToken(),
                     }));
                 } 
                 else
                 {
-                    list.Add(manager.GetDataAt(VolumeChunk.GridToKey(pos)));
+                    list.Add(manager.GetDataAt(VolumeChunk.GridToKey(pos)).AsDataToken());
                 }
             }
         
             return list;
         }
 
+        // Methods
         public static bool WasEdited(this VolumeChunk self) => ((DataList)(object)self)[4].Boolean;
         public static void MarkEdited(this VolumeChunk self) => ((DataList)(object)self)[4] = true;
+
+        public static void Destroy(this VolumeChunk self)
+        {
+            // Trick to get the GameObject of this chunk, since we don't save it directly at the moment.
+            GameObject obj = self.GetMeshFilter().gameObject;
+            GameObject.Destroy(obj);
+        }
 
         // Utils
         public static Vector3Int GetIntGridPos(this VolumeChunk self) => VolumeChunk.KeyToIntGrid(self.GetKey());

@@ -7,12 +7,13 @@ Material:
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_Name: Surface
-  m_Shader: {fileID: 4800000, guid: 0b8116ca5713033b695cb5447cedfd81, type: 3}
+  m_Name: SurfaceTextured
+  m_Shader: {fileID: 4800000, guid: 8410e5a4b985eb98799c81ffc2a3a824, type: 3}
   m_Parent: {fileID: 0}
   m_ModifiedSerializedProperties: 0
   m_ValidKeywords: []
   m_InvalidKeywords:
+  - _SMOOTH_SHADING_ON
   - _SmoothShading
   m_LightmapFlags: 4
   m_EnableInstancingVariants: 1
@@ -44,7 +45,23 @@ Material:
         m_Texture: {fileID: 0}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
+    - _Dirt:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _DirtTex_1:
+        m_Texture: {fileID: 2800000, guid: d797be16f2b41b04c9b2c0cae641b943, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _DirtTex_2:
+        m_Texture: {fileID: 2800000, guid: ab52aa30a40e9f4bc9a299900123c032, type: 3}
+        m_Scale: {x: 0.5, y: 0.5}
+        m_Offset: {x: 0, y: 0}
     - _EmissionMap:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _Grass:
         m_Texture: {fileID: 0}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
@@ -68,16 +85,21 @@ Material:
     m_Floats:
     - _BumpScale: 1
     - _Cutoff: 0.5
+    - _DebugBool: 0
+    - _DebugFloat: 0
     - _DetailNormalMapScale: 1
+    - _DirtBottomY: 0
+    - _DirtSurfaceY: 50
     - _DstBlend: 0
     - _GlossMapScale: 1
-    - _Glossiness: 0.5
+    - _Glossiness: 0
     - _GlossyReflections: 1
-    - _Metallic: 0.2
+    - _Metallic: 0
     - _Mode: 0
+    - _NormalRounding: 1
     - _OcclusionStrength: 1
     - _Parallax: 0.02
-    - _SmoothShading: 0
+    - _SmoothShading: 1
     - _SmoothnessTextureChannel: 0
     - _SpecularHighlights: 1
     - _SrcBlend: 1
@@ -85,5 +107,8 @@ Material:
     - _ZWrite: 1
     m_Colors:
     - _Color: {r: 1, g: 1, b: 1, a: 1}
+    - _DirtColor_1: {r: 1, g: 1, b: 1, a: 1}
+    - _DirtColor_2: {r: 0.8396226, g: 0.8396226, b: 0.8396226, a: 1}
     - _EmissionColor: {r: 0, g: 0, b: 0, a: 1}
+    - _TriWeights: {r: 1, g: 1, b: 1, a: 1}
   m_BuildTextureStacks: []

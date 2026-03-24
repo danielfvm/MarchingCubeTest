@@ -49,7 +49,12 @@ namespace VRCVolumes
             var meshCollider = self.GetComponent<MeshCollider>();
 
             meshFilter.mesh = new Mesh();
+            meshFilter.mesh.MarkDynamic();
+            meshFilter.mesh.bounds = new Bounds(Vector3.zero, Vector3.one);
+            
             meshCollider.sharedMesh = new Mesh();
+            meshCollider.sharedMesh.MarkDynamic();
+            meshCollider.sharedMesh.bounds = new Bounds(Vector3.zero, Vector3.one);
 
             return (VolumeChunk)(object)new DataList(new DataToken[]
             {

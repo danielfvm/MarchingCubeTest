@@ -13,9 +13,8 @@ Shader "VRCVolume/SurfaceNets"
     Texture2D<float> _ActiveTex;
     Texture2D<uint> _IndexLookup;
 
-    bool _Collider;
-    int3 _VoxelDimension;
     uint2 _TargetSize;
+    int3 _VoxelDimension;
     uint2 _DataSize;
     uint _MaxLod;
 
@@ -23,8 +22,25 @@ Shader "VRCVolume/SurfaceNets"
 
     #include "MarchingCubeTables.cginc"
     #include "UnityCG.cginc"
+
+    #define ImplSample
     #include "Volume.cginc"
 
+    struct v2f
+    {
+        float4 pos : SV_POSITION;
+        float2 uv : TEXCOORD0;
+    };
+
+    v2f vert (appdata_base v)
+    {
+        v2f o;
+        o.pos = UnityObjectToClipPos(v.vertex);
+        o.uv = v.texcoord;
+
+        return o;
+    }
+    
     ENDCG
 
     SubShader
@@ -341,6 +357,32 @@ Shader "VRCVolume/SurfaceNets"
 				}
 
 				return index;
+			}
+
+            ENDCG
+        }
+
+
+        Pass
+        {
+            Name "Collider"
+
+            CGPROGRAM
+            #pragma vertex vert
+            #pragma fragment frag
+            #pragma target 5.0
+
+			float4 frag (v2f IN) : SV_Target
+			{
+                float4 data = asfloat(_TriangleTex[IN.uv * _TargetSize]);
+
+                float3 vertex;
+                float3 normal;
+                uint color;
+
+                DecodeVertex(data, vertex, normal, color);
+
+				return float4(vertex, 1.0);
 			}
 
             ENDCG

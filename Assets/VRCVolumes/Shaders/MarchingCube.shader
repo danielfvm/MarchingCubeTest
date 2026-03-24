@@ -14,8 +14,25 @@ Shader "VRCVolume/MarchingCube"
 
     #include "MarchingCubeTables.cginc"
     #include "UnityCG.cginc"
+
+    #define ImplSample
     #include "Volume.cginc"
 
+    struct v2f
+    {
+        float4 pos : SV_POSITION;
+        float2 uv : TEXCOORD0;
+    };
+
+    v2f vert (appdata_base v)
+    {
+        v2f o;
+        o.pos = UnityObjectToClipPos(v.vertex);
+        o.uv = v.texcoord;
+
+        return o;
+    }
+    
     ENDCG
 
     SubShader

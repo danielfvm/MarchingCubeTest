@@ -9,6 +9,12 @@ using VRC.Udon.Common.Interfaces;
 
 namespace VRCVolumes
 {
+    public enum VolumeType
+    {
+        Surface,
+        Cloud,
+    }
+
     /// <summary>
     /// Generates a mesh including colliders using a shader + AsyncGPUReadback.
     /// Make sure to first initialize the Volume instance by calling Setup() before Build().
@@ -51,11 +57,14 @@ namespace VRCVolumes
         private Mesh tempMesh;
         private Color[] vertexReadback;
         private byte[] indexReadback;
+        private int[] triangles;
         private DataList buildingQueue;
         private Material material;
-        private int passVertices, passIndices, passActive, passCompact, passLookup;
-        private RenderTexture texVertices, texActiveVertices, texCompactVertices;
+        private int passVertices, passIndices, passActive, passCompact, passLookup, passCollider;
+        private RenderTexture texVertices, texActiveVertices, texCompactVertices, texCompactCollider;
         private RenderTexture texIndexLookup, texIndices, texActiveIndices, texCompactIndices;
+        private VolumeType volumeType;
+        private DataDictionary colliderBuildQueue;
         #endregion
 
         private void Cleanup()
@@ -66,6 +75,16 @@ namespace VRCVolumes
                 texActiveVertices.Release();
             if (texCompactVertices != null && texCompactVertices.IsCreated())
                 texCompactVertices.Release();
+            if (texCompactCollider != null && texCompactCollider.IsCreated())
+                texCompactCollider.Release();
+            if (texIndexLookup != null && texIndexLookup.IsCreated())
+                texIndexLookup.Release();
+            if (texIndices != null && texIndices.IsCreated())
+                texIndices.Release();
+            if (texActiveIndices != null && texActiveIndices.IsCreated())
+                texActiveIndices.Release();
+            if (texCompactIndices != null && texCompactIndices.IsCreated())
+                texCompactIndices.Release();
         }
 
         public void OnDestroy() => Cleanup();
@@ -77,7 +96,7 @@ namespace VRCVolumes
         /// <param name="voxelDimension"></param>
         /// <param name="roundUpToPowerOf2"></param>
         /// <param name="material"></param>
-        public void Setup(Vector3Int voxelDimension, bool roundUpToPowerOf2, Material material)
+        public void Setup(Vector3Int voxelDimension, bool roundUpToPowerOf2, Material material, VolumeType volumeType)
         {
             // Compute a square texture dimension that can contain all the voxels.
             // It is probably not really necessary to limit it to a square texture with power of 2,
@@ -90,12 +109,14 @@ namespace VRCVolumes
             VoxelDimensionInt = voxelDimension;
             TextureDimensionInt = new Vector2Int(texDim, texDim);
             this.material = material;
+            this.volumeType = volumeType;
 
             passVertices = material.FindPass("Vertices");
             passIndices = material.FindPass("Indices");
             passActive = material.FindPass("Active");
             passCompact = material.FindPass("Compact");
             passLookup = material.FindPass("Lookup");
+            passCollider = material.FindPass("Collider");
 
             // Cleanup temp textures if already created in previous Setup() call
             Cleanup();
@@ -118,6 +139,11 @@ namespace VRCVolumes
                 texCompactVertices = new RenderTexture(texDim / 2, texDim / 2, 0, RenderTextureFormat.ARGBFloat);
                 texCompactVertices.filterMode = FilterMode.Point;
                 texCompactVertices.Create();
+
+                // Collision texture, will copy texCompactVertices but with different encoding
+                texCompactCollider = new RenderTexture(texDim / 2, texDim / 2, 0, RenderTextureFormat.ARGBFloat);
+                texCompactCollider.filterMode = FilterMode.Point;
+                texCompactCollider.Create();
             }
 
             // Index related Textures
@@ -145,7 +171,6 @@ namespace VRCVolumes
             tempMesh = new Mesh();
             tempMesh.MarkDynamic();
             tempMesh.bounds = new Bounds(Vector3.zero, Vector3.one);
-            tempMesh.indexFormat = UnityEngine.Rendering.IndexFormat.UInt32;
 
             // Creating large arrays is slow so we do it only once.
             // We generate tempTriangles (aka the indicies) here to only need to do a simple Array.Copy. 
@@ -154,6 +179,12 @@ namespace VRCVolumes
             indexReadback = new byte[texCompactIndices.width * texCompactIndices.height * 4 * 4];
             
             buildingQueue = new DataList();
+            colliderBuildQueue = new DataDictionary();
+
+            // Used for VolumeType.Cloud
+            triangles = new int[texCompactVertices.width * texCompactVertices.height];
+            for (int i = 0; i < triangles.Length; i++)
+                triangles[i] = i;
         }
 
         public RenderTexture CreateData()
@@ -165,6 +196,7 @@ namespace VRCVolumes
             return data;
         }
 
+
         /// <summary>
         /// Builds a marching cube mesh from the provided weights (data argument) and either directly updates the 
         /// VolumeBuilder.meshFilter or VolumeBuilder.meshCollider (if buildCollider true) or calls the callback function with
@@ -173,8 +205,7 @@ namespace VRCVolumes
         /// <param name="data">Weight (and optionally color) data with an expected size of VolumeBuilder.TextureDimension</param>
         /// <param name="buildCollider">If true will generate a CPU mesh useful for colliders (slower!).</param>
         /// <param name="sharedMesh">Optionally specify what mesh to update, otherwise will use internal one.</param>
-        /// <param name="callback">If set, will be called after Mesh has been built.</param>
-        public void Build(bool buildCollider, Texture data, Mesh sharedMesh = null, VolumeCallback callback = null)
+        public void Build(ulong key, Texture data, Mesh sharedMesh = null, MeshCollider collider = null)
         {
             if (buildingQueue == null)
             {
@@ -182,18 +213,11 @@ namespace VRCVolumes
                 return;
             }
 
-            if (sharedMesh != null)
-            {
-                sharedMesh.MarkDynamic();
-                sharedMesh.bounds = new Bounds(Vector3.zero, Vector3.one);
-                sharedMesh.indexFormat = UnityEngine.Rendering.IndexFormat.UInt32;
-            }
+            var startTime = DateTimeOffset.Now.ToUnixTimeMilliseconds();
 
             // Compute vertices
             {
                 material.SetTexture("_DataTex", data);
-                material.SetInteger("_Collider", buildCollider ? 1 : 0); // Depending on this value the result's encoding changes
-
                 material.SetVector("_VoxelDimension", VoxelDimension);
                 material.SetVector("_DataSize", TextureDimension);
                 material.SetVector("_TargetSize", new Vector2(texVertices.width, texVertices.height));
@@ -209,10 +233,21 @@ namespace VRCVolumes
                 material.SetTexture("_ActiveTex", texActiveVertices);
                 material.SetInteger("_MaxLod", Mathf.RoundToInt(Mathf.Log(texVertices.width, 2)));
                 material.SetVector("_TargetSize", new Vector2(texCompactVertices.width, texCompactVertices.height));
-                VRCGraphics.Blit(null, texCompactVertices, material, passCompact);   
+                VRCGraphics.Blit(null, texCompactVertices, material, passCompact);
+
+                buildingQueue.Add(new DataToken(new object[] 
+                {
+                    null,
+                    sharedMesh,
+                    startTime,
+                    key,
+                }));
+
+                VRCAsyncGPUReadback.Request(texCompactVertices, 0, (IUdonEventReceiver)this);
             }
 
             // Compute indices
+            if (volumeType == VolumeType.Surface)
             {
                 // Compute VertexIndexLookup
                 material.SetTexture("_ActiveTexelMap", texActiveVertices);
@@ -239,24 +274,81 @@ namespace VRCVolumes
                 material.SetInteger("_MaxLod", Mathf.RoundToInt(Mathf.Log(texIndices.width, 2)));
                 material.SetVector("_TargetSize", new Vector2(texCompactIndices.width, texCompactIndices.height));
                 VRCGraphics.Blit(null, texCompactIndices, material, passCompact);
-            } 
 
-            // Readback from GPU to CPU (QUEUE ASSUMES READBACK IS IN ORDER BUT NOT SURE IF THATS THE CASE!)
-            // if thats not the case, could store the index of this buildInfo into the tempTexCompact's end (similar to vertex length)
-            // TODO: This is a bit odd - come up with better solution
-            for (int i = 0; i < 2; i++)
-            {
                 buildingQueue.Add(new DataToken(new object[]
                 {
-                    buildCollider,
-                    callback,
+                    null,
                     sharedMesh,
-                    DateTimeOffset.Now.ToUnixTimeMilliseconds(),
+                    startTime,
+                    key,
                 }));
-            }
 
-            VRCAsyncGPUReadback.Request(texCompactVertices, 0, (IUdonEventReceiver)this);
-            VRCAsyncGPUReadback.Request(texCompactIndices, 0, (IUdonEventReceiver)this);
+                VRCAsyncGPUReadback.Request(texCompactIndices, 0, (IUdonEventReceiver)this);
+            } 
+
+            if (collider != null)
+            {
+                // Convert vertices to different encoding
+                material.SetTexture("_TriangleTex", texCompactVertices);
+                material.SetVector("_TargetSize", new Vector2(texCompactCollider.width, texCompactCollider.height));
+                VRCGraphics.Blit(null, texCompactCollider, material, passCollider);
+
+                buildingQueue.Add(new DataToken(new object[]
+                {
+                    collider,
+                    sharedMesh,
+                    startTime,
+                    key,
+                }));
+
+                VRCAsyncGPUReadback.Request(texCompactCollider, 0, (IUdonEventReceiver)this);
+            }
+        }
+
+        private void Update()
+        {
+            if (colliderBuildQueue.Count > 0)
+            {
+                var key = colliderBuildQueue.GetKeys()[0];
+                var data = (object[])colliderBuildQueue[key].Reference;
+                var collider = (MeshCollider)data[0];
+                var colors = (Color[])data[1];
+                var indices = (int[])data[2];
+                var counter = (int)data[3];
+
+                if (counter > 0)
+                {
+                    colliderBuildQueue[key] = new DataToken(new object[]
+                    {
+                        collider,
+                        colors,
+                        indices,
+                        counter - 1,
+                    });
+                }
+                else
+                {
+                    colliderBuildQueue.Remove(key);
+
+                    Vector3[] vertices = new Vector3[colors.Length];
+                    for (int i = 0; i < vertices.Length; i ++)
+                        vertices[i] = new Vector3(colors[i].r, colors[i].g, colors[i].b);
+
+                    // TODO: This is an issue
+                    var meshCollider = collider.sharedMesh;
+
+                    meshCollider.Clear(true);
+                    meshCollider.SetVertices(vertices, 0, vertices.Length, UnityEngine.Rendering.MeshUpdateFlags.DontRecalculateBounds);
+                    meshCollider.SetIndices(indices, MeshTopology.Quads, 0, false);
+
+
+                    // This is required in order to force the collider to update
+                    collider.sharedMesh = null;
+                    collider.sharedMesh = meshCollider;
+
+                    Debug.Log("Build Collider!");
+                }
+            }
         }
 
         public override void OnAsyncGpuReadbackComplete(VRCAsyncGPUReadbackRequest request)
@@ -267,10 +359,9 @@ namespace VRCVolumes
                 return;
             }
 
-            var collider = (bool)((object[])buildInfo.Reference)[0];
-            var callback = (VolumeCallback)((object[])buildInfo.Reference)[1];
-            var sharedMesh = (Mesh)((object[])buildInfo.Reference)[2];
-            var timeStart = (long)((object[])buildInfo.Reference)[3];
+            var collider = (MeshCollider)((object[])buildInfo.Reference)[0];
+            var sharedMesh = (Mesh)((object[])buildInfo.Reference)[1];
+            var key = (ulong)((object[])buildInfo.Reference)[3];
             buildingQueue.RemoveAt(0);
 
             // This assumes that vertices and indices have different sized textures, alternative could be to just add it in the buildInfo.
@@ -284,11 +375,30 @@ namespace VRCVolumes
 
             var mesh = sharedMesh != null ? sharedMesh : tempMesh;
 
-            if (isVertexReadback)
+            if (collider != null)
             {
                 if (!request.TryGetData(vertexReadback))
                 {
-                    Debug.LogError($"[{name}][VolumeBuilder][ERR]: Gpu Readback failed to get data.");
+                    Debug.LogError($"[{name}][VolumeBuilder][Collider][ERR]: Gpu Readback failed to get data.");
+                    return;
+                }
+
+                var colors = new Color[mesh.vertices.Length];
+                Array.Copy(vertexReadback, colors, colors.Length);
+
+                colliderBuildQueue[key] = new DataToken(new object[]
+                {
+                    collider,
+                    colors,
+                    mesh.GetIndices(0),
+                    5,
+                });
+            }
+            else if (isVertexReadback)
+            {
+                if (!request.TryGetData(vertexReadback))
+                {
+                    Debug.LogError($"[{name}][VolumeBuilder][Vertex][ERR]: Gpu Readback failed to get data.");
                     return;
                 }
 
@@ -296,7 +406,7 @@ namespace VRCVolumes
                 int len = BitConverter.SingleToInt32Bits(vertexReadback[vertexReadback.Length - 1].r);
                 if (len > vertexReadback.Length)
                 {
-                    Debug.LogError($"[{name}][VolumeBuilder][ERR]: Gpu Readback returned length of {len} but max is {vertexReadback.Length}, was there an error with the shader material?");
+                    Debug.LogError($"[{name}][VolumeBuilder][Vertex][ERR]: Gpu Readback returned length of {len} but max is {vertexReadback.Length}, was there an error with the shader material?");
                     return;
                 }
 
@@ -306,22 +416,26 @@ namespace VRCVolumes
                 // if MeshCollider is used, requires proper vertex coords => Convert data from Color[] to Vector3[], 
                 // otherwise vertices are just (0,0,0) and the vertex shader transforms the vertices using the color data
                 Vector3[] vertices = new Vector3[len];
-                if (collider)
-                    for (int i = 0; i < len; i ++)
-                        vertices[i] = new Vector3(vertexReadback[i].r, vertexReadback[i].g, vertexReadback[i].b);
-                
+
                 // Update mesh with as few compute as possible (e.g. by disabling recalculating bounds which is default behaviour)
                 mesh.Clear(true);
                 mesh.SetVertices(vertices, 0, len, UnityEngine.Rendering.MeshUpdateFlags.DontRecalculateBounds);
                 mesh.SetColors(colors, 0, len, UnityEngine.Rendering.MeshUpdateFlags.DontRecalculateBounds);
 
-                Debug.Log("Vertices len: " + len);
+                if (volumeType == VolumeType.Cloud)
+                {
+                    var indices = new int[vertices.Length];
+                    Array.Copy(triangles, indices, indices.Length);
+                    mesh.SetIndices(indices, MeshTopology.Points, 0, false);
+                }
+
+                // Debug.Log("Vertices len: " + len);
             }
             else
             {
                 if (!request.TryGetData(indexReadback))
                 {
-                    Debug.LogError($"[{name}][VolumeBuilder][ERR]: Gpu Readback failed to get data.");
+                    Debug.LogError($"[{name}][VolumeBuilder][Index][ERR]: Gpu Readback failed to get data.");
                     return;
                 }
 
@@ -329,24 +443,16 @@ namespace VRCVolumes
                 int len = BitConverter.ToInt32(indexReadback, indexReadback.Length - 4) * 4;
                 if (len * 4 > indexReadback.Length)
                 {
-                    Debug.LogError($"[{name}][VolumeBuilder][ERR]: Gpu Readback returned length of {len} but max is {indexReadback.Length}, was there an error with the shader material?");
+                    Debug.LogError($"[{name}][VolumeBuilder][Index][ERR]: Gpu Readback returned length of {len} but max is {indexReadback.Length}, was there an error with the shader material?");
                     return;
                 }
                 
                 int[] indices = new int[len];
-                Debug.Log("Indices len: " + len);
                 Buffer.BlockCopy(indexReadback, 0, indices, 0, len * 4);
 
                 mesh.SetIndices(indices, MeshTopology.Quads, 0, false);
-                /*int[] k = new int[mesh.vertices.Length];
-                for (int i = 0; i < k.Length; i++)
-                    k[i] = i;
-                mesh.SetIndices(k, MeshTopology.Points, 0, false);*/
 
-                long timePast = DateTimeOffset.Now.ToUnixTimeMilliseconds() - timeStart;
-
-                if (callback != null)
-                    callback.OnAsyncMeshBuild(mesh, collider, timePast);
+                // Debug.Log("Indices len: " + len);
             }
         }
     }
