@@ -28,7 +28,7 @@ float3 projectOnPlane(float3 vec, float3 normal)
 
 #define mod(x, y) (x - y * floor(x / y))
 
-fixed4 TriplanarSampleTest(sampler2D _texture, float2 _tiling, float2 _offset, float3 _pos, float3 _worldNormal)
+float2 GetTriplanarSampleUV(float2 _tiling, float2 _offset, float3 _pos, float3 _worldNormal)
 {
 	// _worldNormal = normalize(_worldNormal);
 
@@ -39,24 +39,20 @@ fixed4 TriplanarSampleTest(sampler2D _texture, float2 _tiling, float2 _offset, f
 	float3 posOnPlane = projectOnPlane(_pos, _worldNormal);
 	float dist = length(posOnPlane);
 
-	// float radToDeg = 180/3.141592;
-	// float degToRad = 3.141592/180;
-
 	float xAngle = acos(dot(normalize(posOnPlane), normalRight));
 	float xDist = dist * sin(1.570796 - xAngle);
 
 	float yAngle = acos(dot(normalize(posOnPlane), normalUp));
 	float yDist = dist * sin(1.570796 - yAngle);
 
-	// float2 localUv = mod(float2(xDist, yDist), 1.);
 	float2 localUv = float2(xDist, yDist);
 
-	result = tex2D(_texture, localUv * _tiling + _offset);
+	// result = tex2D(_texture, localUv * _tiling + _offset);
 
-	// return fixed4(localUv.xy, 0, 1);
-	// return mod(xDist, .3)/.3;
-	// return (mod(xDist, .5) > .25 ? fixed4(1,0,0,0) : fixed4(0,1,0,0));
-	// return (mod(yDist, .5) > .25 ? fixed4(1,0,0,0) : fixed4(0,1,0,0));
+	return localUv * _tiling + _offset;
+}
 
-	return result; // / ((_weights.x + _weights.y + _weights.z)/3.0);
+fixed4 TriplanarSampleTest(sampler2D _texture, float2 _tiling, float2 _offset, float3 _pos, float3 _worldNormal)
+{
+	return tex2D(_texture, GetTriplanarSampleUV(_tiling, _offset, _pos, _worldNormal));
 }
