@@ -57,8 +57,39 @@ Shader "VRCVolume/Generate"
 
             #include "../../krajsy/NoiseFunctions.cginc"
 
+            // (-1, 1) -> (0, 1)
+            float NOOToZO(float value)
+            {
+                return value * .5 + .5;
+            }
+
+            void krajsyTerrain(int3 gridPos, inout float weight, inout uint color)
+            {
+                float continentalness = NOOToZO(noise(gridPos.xz * 0.01)) * 50;
+
+                float weirdness = (noise(gridPos.xz * .01));
+                float weirdnessValue = pow(gnoise(gridPos * .05), 2) * 70;
+
+                float density = -gridPos.y;
+                density += continentalness;
+                density += weirdness * weirdnessValue;
+
+                // density = weirdnessValue;
+
+                float densityOffset = 0;
+                float densityTransition = 1;
+
+                weight = 1 / (1 + exp((densityOffset - density)/densityTransition));
+
+                color = 0;
+                // color = gridPos.y < -22 * y - 10 ? 0 : 1;
+            }
+
 			void encode(int3 gridPos, inout float weight, inout uint color)
             { 
+                krajsyTerrain(gridPos, weight, color);
+                return;
+
                 float y = gnoise(gridPos * 0.1);
                 float k = (gnoise(gridPos * 0.05) * 4.0 + 0.1); // mountain heights
 

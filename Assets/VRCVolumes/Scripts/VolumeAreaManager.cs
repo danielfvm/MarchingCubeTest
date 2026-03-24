@@ -6,6 +6,7 @@ using VRC.SDKBase;
 namespace VRCVolumes
 {
     [RequireComponent(typeof(VolumeBuilder))]
+    [UdonBehaviourSyncMode(BehaviourSyncMode.None)]
     public class VolumeAreaManager : UdonSharpBehaviour
     {
         #region Serialized Fields

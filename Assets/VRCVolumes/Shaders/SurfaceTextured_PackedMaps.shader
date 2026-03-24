@@ -74,6 +74,7 @@ Shader "VRCVolume/SurfaceTextured_PackedMaps"
             float3 normal : NORMAL;
             float2 texcoord;
             float3 worldPos;
+            float3 objectPos;
             float color;
         };
 
@@ -104,6 +105,8 @@ Shader "VRCVolume/SurfaceTextured_PackedMaps"
             o.texcoord = v.texcoord;
             o.worldPos = mul(unity_ObjectToWorld, v.vertex).xyz;
             o.normal = UnityObjectToWorldNormal(normal);
+
+            // o.objectPos = mul(unity_ObjectToWorld, float4(0.0,0.0,0.0,1.0) );
         }
 
         UNITY_INSTANCING_BUFFER_START(Props)
@@ -114,8 +117,7 @@ Shader "VRCVolume/SurfaceTextured_PackedMaps"
             // Setup input values
             float3 worldPos = IN.worldPos;
             float3 worldNormal = IN.normal;
-            // float4 objectOrigin = mul(unity_ObjectToWorld, float4(0.0,0.0,0.0,1.0) );
-            // float heightPoint = worldPos.y - objectOrigin.y;
+            // float4 objectPos = IN.objectPos;
 
             // Setup output values
             fixed4 outColor = 0;
@@ -157,6 +159,7 @@ Shader "VRCVolume/SurfaceTextured_PackedMaps"
 
             // Debug
             if (_Debug_DisplayNormals) outColor.rgb = outNormal;
+            // outColor.rgb = IN.objectPos;
 
             o.Albedo = outColor.rgb;
             o.Metallic = _Metallic;
