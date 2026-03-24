@@ -133,8 +133,8 @@ float gnoise(float p){
 
 float gnoise(float2 n) {
 	const float2 d = float2(0.0, 1.0);
-    	float2  b = floor(n), 
-        f = smoothstep(d.xx, d.yy, frac(n));
+	float2  b = floor(n);
+	float2 f = smoothstep(d.xx, d.yy, frac(n));
 
     //float2 f = frac(n);
 	//f = f*f*(3.0-2.0*f);
@@ -142,7 +142,7 @@ float gnoise(float2 n) {
     float x = lerp(rand2(b), rand2(b + d.yx), f.x),
           y = lerp(rand2(b + d.xy), rand2(b + d.yy), f.x);
 
-	return lerp( x, y, f.y );
+	return lerp(x, y, f.y);
 }
 
 

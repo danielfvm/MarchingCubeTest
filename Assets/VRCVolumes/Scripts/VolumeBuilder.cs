@@ -21,6 +21,7 @@ namespace VRCVolumes
     /// Generates a mesh including colliders using a shader + AsyncGPUReadback.
     /// Make sure to first initialize the Volume instance by calling Setup() before Build().
     /// </summary>
+    [UdonBehaviourSyncMode(BehaviourSyncMode.None)]
     public class VolumeBuilder : UdonSharpBehaviour
     {
         /// <summary>
@@ -390,7 +391,7 @@ namespace VRCVolumes
 
             var mesh = sharedMesh != null ? sharedMesh : tempMesh;
 
-            if (collider != null)
+            if (collider != null) // && collider.sharedMesh != null)
             {
                 if (!request.TryGetData(vertexReadback))
                 {

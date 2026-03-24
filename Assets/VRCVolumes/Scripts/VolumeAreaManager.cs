@@ -6,6 +6,7 @@ using VRC.SDKBase;
 namespace VRCVolumes
 {
     [RequireComponent(typeof(VolumeBuilder))]
+    [UdonBehaviourSyncMode(BehaviourSyncMode.None)]
     public class VolumeAreaManager : UdonSharpBehaviour
     {
         #region Serialized Fields
@@ -15,6 +16,7 @@ namespace VRCVolumes
         public bool Collider = true;
         public bool Lod = true;
         public int AutoLoadChunks = 0;
+        public bool AutoLoadChunksAsSphere = false;
         public int GridSize = 62;
         public bool WaitForBuildQueue;
         public Material volumeMaterial, generateMaterial;
@@ -22,6 +24,11 @@ namespace VRCVolumes
         [Header("References")]
         public BulkInstantiate chunkInstantiate;
         public Material copyWeightsMaterial;
+
+        [Header("Debug")]
+        public bool debug_limitedChunkHeightGeneration = false;
+        public int debug_minChunkHeight = -1;
+        public int debug_maxChunkHeight = 1;
         #endregion
 
         #region Local Fields
@@ -305,6 +312,15 @@ namespace VRCVolumes
                 for (int y = -d; y <= d; y++)
                 for (int z = -d; z <= d; z++)
                 {  
+                    if (debug_limitedChunkHeightGeneration && (y < debug_minChunkHeight || y > debug_maxChunkHeight))
+                        continue;
+                    
+                    if (AutoLoadChunksAsSphere)
+                    {
+                        if ((x*x + y*y + z*z) > d*d)
+                            continue;
+                    }
+
                     var pos = chunkPos + new Vector3Int(x, y, z);
                     ulong key = VolumeChunk.GridToKey(pos);
                     if (!IsChunkLoaded(key))
