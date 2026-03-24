@@ -1,7 +1,15 @@
 Shader "VRCVolume/Generate"
 {
+    Properties
+    {
+        _LUT_Tex ("Look up texture", 2D) = "white" {}
+    }
+
     CGINCLUDE    
     #include "UnityCG.cginc" 
+
+    sampler2D _LUT_Tex;
+    // float4 _LUT_Tex_ST;
 
     // Uniforms
     int3 _VoxelDimension;
@@ -63,25 +71,53 @@ Shader "VRCVolume/Generate"
                 return value * .5 + .5;
             }
 
+            // (0, 1) -> (-1, 1)
+            float ZOToNOO(float value)
+            {
+                return value * 2 - 1;
+            }
+
+            // (-1, 1) -> (a, b)
+            float NOOToAB(float value, float a, float b)
+            {
+                return ((value + 1) * (a-b)) / 2 + b;
+            }
+
+            float sigmoid(float value, float transitionSmoothness, float offset)
+            {
+                return 1 / (1 + exp((offset-value)/transitionSmoothness));
+            }
+
+            static const float worldScale = 0.5;
+            // static const float worldScale = 2;
+            static const float heightOffset = -100.0;
+            static const float seaLevel = 0.0;
+
             void krajsyTerrain(int3 gridPos, inout float weight, inout uint color)
             {
-                float continentalness = NOOToZO(noise(gridPos.xz * 0.01)) * 50;
+                // gridPos.y -= heightOffset;
+                gridPos /= worldScale;
 
-                float weirdness = (noise(gridPos.xz * .01));
-                float weirdnessValue = pow(gnoise(gridPos * .05), 2) * 70;
+                float continentalness = NOOToZO(noise(gridPos.xz * 0.003 + float2(100, 50)));
 
-                float density = -gridPos.y;
-                density += continentalness;
-                density += weirdness * weirdnessValue;
+                float weirdnessMask = saturate(ZOToNOO(gnoise(gridPos.xz * .01)));
+                weirdnessMask = pow(weirdnessMask, 2) * sign(weirdnessMask);
+
+                float weirdnessValue = gnoise(gridPos * .1) * 70;
+
+                float density = -gridPos.y + heightOffset;
+                density += tex2D(_LUT_Tex, float2(continentalness, 15/16. + .5/16)).r * 200;
+                // density += weirdnessMask * weirdnessValue;
 
                 // density = weirdnessValue;
 
                 float densityOffset = 0;
                 float densityTransition = 1;
 
-                weight = 1 / (1 + exp((densityOffset - density)/densityTransition));
+                weight = sigmoid(density, densityTransition, densityOffset);
+                // weight = 1 / (1 + exp((densityOffset - density)/densityTransition));
 
-                color = 0;
+                color = gridPos.y < seaLevel ? 0 : 1;
                 // color = gridPos.y < -22 * y - 10 ? 0 : 1;
             }
 
