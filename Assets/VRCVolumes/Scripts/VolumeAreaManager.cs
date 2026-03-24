@@ -280,6 +280,7 @@ namespace VRCVolumes
                 list[i].AsVolumeChunk().Destroy();
 
             chunks.Clear();
+            buildQueue.Clear();
         }
 
         private void Update()
@@ -288,6 +289,8 @@ namespace VRCVolumes
             {
                 var key = buildQueue.GetKeys()[0];
                 VolumeChunk chunk = buildQueue[key].AsVolumeChunk();
+
+                // The added time is to force it to rebuild after 1 / 2 seconds
                 builder.Build(key.ULong, GetChunkData(chunk), chunk.GetMeshFilter().sharedMesh, Collider ? chunk.GetMeshCollider() : null);
                 buildQueue.Remove(key);
             }
@@ -301,11 +304,11 @@ namespace VRCVolumes
                 for (int x = -d; x <= d; x++)
                 for (int y = -d; y <= d; y++)
                 for (int z = -d; z <= d; z++)
-                {
+                {  
                     var pos = chunkPos + new Vector3Int(x, y, z);
                     ulong key = VolumeChunk.GridToKey(pos);
                     if (!IsChunkLoaded(key))
-                        LoadChunk(GetChunkAt(key));    
+                        LoadChunk(GetChunkAt(key));
                 }
             }
         }
