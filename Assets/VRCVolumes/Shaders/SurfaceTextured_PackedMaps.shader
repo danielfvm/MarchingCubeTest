@@ -126,7 +126,7 @@ Shader "VRCVolume/SurfaceTextured_PackedMaps"
             half outOcclusion = 0;
 
             // Texture interpolaion value
-            float textureWeight = saturate(IN.color);
+            float textureWeight = saturate(IN.color - 0.75 + outNormal.y);
 
             // Round the world normal to get smoothed sample direction
             float3 roundedNormal = normalize(round(worldNormal * _NormalRounding) / _NormalRounding);

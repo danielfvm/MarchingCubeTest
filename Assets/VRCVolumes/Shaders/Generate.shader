@@ -123,8 +123,8 @@ Shader "VRCVolume/Generate"
 
 			void encode(int3 gridPos, inout float weight, inout uint color)
             { 
-                krajsyTerrain(gridPos, weight, color);
-                return;
+                //krajsyTerrain(gridPos, weight, color);
+                //return;
 
                 float y = gnoise(gridPos * 0.1);
                 float k = (gnoise(gridPos * 0.05) * 4.0 + 0.1); // mountain heights
