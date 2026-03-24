@@ -317,7 +317,11 @@ namespace VRCVolumes
                 var indices = (int[])data[2];
                 var counter = (int)data[3];
 
-                if (counter > 0)
+                if (!Utilities.IsValid(collider))
+                {   
+                    colliderBuildQueue.Remove(key);
+                }
+                else if (counter > 0)
                 {
                     colliderBuildQueue[key] = new DataToken(new object[]
                     {
@@ -346,8 +350,6 @@ namespace VRCVolumes
                     // This is required in order to force the collider to update
                     collider.sharedMesh = null;
                     collider.sharedMesh = meshCollider;
-
-                    Debug.Log("Build Collider!");
                 }
             }
         }
@@ -405,7 +407,7 @@ namespace VRCVolumes
 
                 // Shader has to make sure that the last pixel contains the total length of vertices
                 int len = BitConverter.SingleToInt32Bits(vertexReadback[vertexReadback.Length - 1].r);
-                if (len > vertexReadback.Length)
+                if (len > vertexReadback.Length || len < 0)
                 {
                     Debug.LogError($"[{name}][VolumeBuilder][Vertex][ERR]: Gpu Readback returned length of {len} but max is {vertexReadback.Length}, was there an error with the shader material?");
                     return;
