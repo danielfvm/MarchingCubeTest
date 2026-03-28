@@ -10,17 +10,17 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: c333ccfdd0cbdbc4ca30cef2dd6e6b9b, type: 3}
-  m_Name: ChunkSyncHandler
+  m_Name: VolumeChunkSyncCallback
   m_EditorClassIdentifier: 
-  serializedUdonProgramAsset: {fileID: 11400000, guid: 606fb31e7f568fe4cb36988a465c94fc, type: 2}
+  serializedUdonProgramAsset: {fileID: 11400000, guid: 7d97ad0200abc581ca32a52b21537cb8, type: 2}
   udonAssembly: 
   assemblyError: 
-  sourceCsScript: {fileID: 11500000, guid: 6baae955dbca8f4439a214cf68d2ed76, type: 3}
+  sourceCsScript: {fileID: 11500000, guid: a12a84f50b7a705988a8b3991dbbf3c7, type: 3}
   scriptVersion: 2
   compiledVersion: 2
-  behaviourSyncMode: 4
+  behaviourSyncMode: 0
   hasInteractEvent: 0
-  scriptID: -6973578487484239207
+  scriptID: -3341855911352166963
   serializationData:
     SerializedFormat: 2
     SerializedBytes: 

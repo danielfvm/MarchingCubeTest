@@ -17,7 +17,7 @@ namespace VRCVolumes
         public bool Lod = true;
         public int AutoLoadChunks = 0;
         public bool AutoLoadChunksAsSphere = false;
-        public int GridSize = 62;
+        public int GridSize = 64;
         public bool WaitForBuildQueue;
         public Material volumeMaterial, generateMaterial;
 
@@ -46,9 +46,10 @@ namespace VRCVolumes
         #endregion
 
         #region Utils
+        public Vector2Int TextureDimensionInt => builder.TextureDimensionInt;
         public int TotalTextureDataInBytes => datas.Count * builder.TextureDimensionInt.x * builder.TextureDimensionInt.y * 4 /* RFloat */; 
 
-        public Vector3 WorldToGridPos(Vector3 pos) => transform.InverseTransformPoint(pos) * GridSize;
+        public Vector3 WorldToGridPos(Vector3 pos) => transform.InverseTransformPoint(pos) * (GridSize - 2);
 
         private Vector3Int WorldToChunkPos(Vector3 pos)
         {
@@ -102,7 +103,7 @@ namespace VRCVolumes
         {
             generateMaterial.SetVector("_ChunkPos", gridPos);
             generateMaterial.SetVector("_TargetSize", builder.TextureDimension);
-            generateMaterial.SetVector("_VoxelDimension", Vector3.one * GridSize);
+            generateMaterial.SetVector("_VoxelDimension", Vector3.one * (GridSize - 2));
             VRCGraphics.Blit(null, data, generateMaterial);
         }
 
@@ -154,7 +155,7 @@ namespace VRCVolumes
             else
                 volumeMaterial.DisableKeyword("_CHUNKED_ON");
 
-            builder.Setup(Vector3Int.one * GridSize, true, volumeMaterial, VolumeType.Surface);
+            builder.Setup(Vector3Int.one * (GridSize - 2), true, volumeMaterial, VolumeType.Surface);
             chunks = new DataDictionary();
             datas = new DataDictionary();
             tempData = builder.CreateData();
@@ -190,7 +191,7 @@ namespace VRCVolumes
                 RenderTexture texture = data.GetData();
                 material.SetVector("_ChunkPos", data.GetGridPos());
                 material.SetVector("_TargetSize", builder.TextureDimension);
-                material.SetVector("_VoxelDimension", Vector3.one * GridSize);
+                material.SetVector("_VoxelDimension", Vector3.one * (GridSize - 2));
 
                 copyWeightsMaterial.SetTexture("_DataTex", texture);
                 copyWeightsMaterial.SetVector("_TargetSize", builder.TextureDimension);

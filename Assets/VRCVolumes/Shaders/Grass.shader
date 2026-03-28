@@ -33,6 +33,7 @@ Shader "VoxelMesh/GrassFromArea"
 
             #include "UnityCG.cginc"
             #include "Volume.cginc"
+            #include "../../krajsy/NoiseFunctions.cginc"
 
             sampler2D _MainTex;
             sampler2D _GrassTintMap;
@@ -90,7 +91,7 @@ Shader "VoxelMesh/GrassFromArea"
                 return frac(sin(dot(p, float2(12.9898, 78.233))) * 43758.5453);
             }
 
-            static const int MAX_BLADES = 20;
+            static const int MAX_BLADES = 3;
 
             [maxvertexcount(MAX_BLADES * 6)] // blades max * 6 vertices per quad
             void geom(triangle v2g input[3], inout TriangleStream<g2f> triStream)
@@ -130,6 +131,9 @@ Shader "VoxelMesh/GrassFromArea"
                 // Grass orientation: up and right vectors
                 float3 up = float3(0, 1, 0);
 
+                float3 windDir = normalize(float3(gnoise(triCenter * 0.2) - 0.5, 0, gnoise((triCenter + 1) * 0.2) - 0.5));
+                windDir.y = 0;
+
                 for (int i = 0; i < bladeCount; i++)
                 {
                     // Generate random barycentric coords inside triangle
@@ -164,8 +168,8 @@ Shader "VoxelMesh/GrassFromArea"
                     float3 right = localRight;
 
                     // Wind sway on top point
-                    float sway = sin(_Time.y * _WindSwayFrequency + dot(pos.xz, float2(0.1, 0.1))) * _WindStrength;
-                    float3 topPos = pos + up * _GrassHeight + right * sway;
+                    float sway = sin(_Time.y * _WindSwayFrequency + (1.0 + windDir.x * 0.3 + windDir.y * 0.3)) * _WindStrength;
+                    float3 topPos = pos + up * _GrassHeight + windDir * sway;
 
                     // Compute grass quad corners
                     float3 v0 = pos - right * _GrassWidth;

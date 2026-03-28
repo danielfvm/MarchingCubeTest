@@ -13,7 +13,7 @@ namespace VolumetricPens
 {
     [UdonBehaviourSyncMode(BehaviourSyncMode.Manual)]
     public class ChunkSyncHandler : UdonSharpBehaviour
-    {
+    {/*
         public MarchingCubeSystem system;
 
         public int currentChunkIndex = 0;
@@ -137,7 +137,7 @@ namespace VolumetricPens
             }
 
             currentChunkIndex++;*/
-            // SendCustomEventDelayedFrames(nameof(CustomUpdate), 1);
+         /*   // SendCustomEventDelayedFrames(nameof(CustomUpdate), 1);
             // RequestSerialization();
         }
 
@@ -193,7 +193,7 @@ namespace VolumetricPens
             RequestSerialization();
             #endif
         }
-
+*/
         /*
         public void EncodeSyncData()
         {
@@ -278,7 +278,7 @@ namespace VolumetricPens
             SendCustomEventDelayedFrames(nameof(DecodeSyncData), 1);
         }
         */
-
+/*
         #if UNITY_EDITOR
         public void Run_OnPreSerialization() => OnPreSerialization();
         #endif
@@ -382,6 +382,6 @@ namespace VolumetricPens
         public void ToggleSyncing()
         {
             shouldSync = !shouldSync;
-        }
+        }*/
     }
 }
