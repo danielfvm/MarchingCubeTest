@@ -1,9 +1,7 @@
 ﻿
 using System;
 using UdonSharp;
-using Unity.Mathematics;
 using UnityEngine;
-using UnityEngine.Analytics;
 using VRC.SDK3.Data;
 using VRC.SDK3.Rendering;
 using VRC.SDKBase;

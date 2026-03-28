@@ -229,7 +229,11 @@ namespace VRCVolumes
             foreach (VolumeChunk chunk in GetChunksInBounds(bounds))
             {
                 chunk.MarkEdited();
-                buildQueue[chunk.GetKey()] = chunk.AsDataToken();
+
+                if (chunk.IsVisible())
+                    buildQueue[chunk.GetKey()] = chunk.AsDataToken();
+                else                
+                    chunk.MarkDirty(); // Mark for later update
             }
         }
 
@@ -346,6 +350,15 @@ namespace VRCVolumes
                     ulong key = VolumeChunk.GridToKey(pos);
                     if (!IsChunkLoaded(key))
                         LoadChunk(GetChunkAt(key));
+                    else 
+                    {
+                        VolumeChunk chunk = GetChunkAt(key);
+                        if (chunk.IsDirty())
+                        {
+                            chunk.ClearDirty();        
+                            buildQueue[key] = chunk.AsDataToken();
+                        }
+                    }
 
                     // TODO: Optionally disable/enable chunk meshcollider here
                 }

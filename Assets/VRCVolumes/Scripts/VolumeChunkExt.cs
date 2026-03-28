@@ -9,8 +9,11 @@ namespace VRCVolumes
         public static ulong GetKey(this VolumeChunk self) => ((DataList)(object)self)[0].ULong;
         public static MeshFilter GetMeshFilter(this VolumeChunk self) => (MeshFilter)((DataList)(object)self)[1].Reference;
         public static MeshCollider GetMeshCollider(this VolumeChunk self) => (MeshCollider)((DataList)(object)self)[2].Reference;
+
+        public static MeshRenderer GetMeshRenderer(this VolumeChunk self) => (MeshRenderer)((DataList)(object)self)[2].Reference;
+
         public static DataList GetDataRefs(this VolumeChunk self, VolumeAreaManager manager) {
-            DataList list = ((DataList)(object)self)[3].DataList;
+            DataList list = ((DataList)(object)self)[4].DataList;
 
             // Only setup references on demand, allows for preview chunks that do not have no data blocks
             if (list.Count == 0)
@@ -40,14 +43,25 @@ namespace VRCVolumes
         }
 
         // Methods
-        public static bool WasEdited(this VolumeChunk self) => ((DataList)(object)self)[4].Boolean;
-        public static void MarkEdited(this VolumeChunk self) => ((DataList)(object)self)[4] = true;
+        public static bool WasEdited(this VolumeChunk self) => ((DataList)(object)self)[5].Boolean;
+        public static void MarkEdited(this VolumeChunk self) => ((DataList)(object)self)[5] = true;
+
+
+        public static bool IsDirty(this VolumeChunk self) => ((DataList)(object)self)[6].Boolean;
+        public static void MarkDirty(this VolumeChunk self) => ((DataList)(object)self)[6] = true;
+        public static void ClearDirty(this VolumeChunk self) => ((DataList)(object)self)[6] = false;
 
         public static void Destroy(this VolumeChunk self)
         {
             // Trick to get the GameObject of this chunk, since we don't save it directly at the moment.
             GameObject obj = self.GetMeshFilter().gameObject;
             GameObject.Destroy(obj);
+        }
+
+
+        public static bool IsVisible(this VolumeChunk self)
+        {
+            return self.GetMeshRenderer().enabled;
         }
 
         // Utils
