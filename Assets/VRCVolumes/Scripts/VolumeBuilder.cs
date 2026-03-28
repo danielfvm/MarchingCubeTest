@@ -70,6 +70,8 @@ namespace VRCVolumes
         private DataDictionary colliderBuildQueue;
         #endregion
 
+        public RenderTextureFormat DataFormat => RenderTextureFormat.RFloat;
+
         private void Cleanup()
         {
             if (texVertices != null && texVertices.IsCreated())
@@ -192,7 +194,7 @@ namespace VRCVolumes
 
         public RenderTexture CreateData()
         {
-            var data = new RenderTexture(TextureDimensionInt.x, TextureDimensionInt.y, 0, RenderTextureFormat.RFloat);
+            var data = new RenderTexture(TextureDimensionInt.x, TextureDimensionInt.y, 0, DataFormat);
             data.filterMode = FilterMode.Point;
             data.Create();
 

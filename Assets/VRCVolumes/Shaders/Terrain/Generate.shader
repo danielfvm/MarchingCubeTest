@@ -7,6 +7,7 @@ Shader "VRCVolume/Generate"
 
     CGINCLUDE    
     #include "UnityCG.cginc" 
+    #include "../Volume.cginc"
 
     sampler2D _LUT_Tex;
     // float4 _LUT_Tex_ST;
@@ -34,7 +35,7 @@ Shader "VRCVolume/Generate"
     void encode(int3 gridPos, inout float weight, inout uint color);
 
     uint frag (v2f IN) : SV_Target 
-    { 
+    {
         uint2 uv = IN.uv * _TargetSize;
         uint voxelIndex = uv.x + uv.y * _TargetSize.x;
         
@@ -49,7 +50,7 @@ Shader "VRCVolume/Generate"
 
         encode(gridPos, weight, color);
 
-        return uint(saturate(weight) * 0xFFFF) << 8 | color; 
+        return EncodeVoxel(weight, color); 
     }
 
     ENDCG
@@ -63,7 +64,7 @@ Shader "VRCVolume/Generate"
             #pragma fragment frag
             #pragma target 5.0
 
-            #include "../../krajsy/NoiseFunctions.cginc"
+            #include "../../../krajsy/NoiseFunctions.cginc"
 
             // (-1, 1) -> (0, 1)
             float NOOToZO(float value)

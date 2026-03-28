@@ -32,8 +32,8 @@ Shader "VoxelMesh/GrassFromArea"
             #pragma target 4.0
 
             #include "UnityCG.cginc"
-            #include "Volume.cginc"
-            #include "../../krajsy/NoiseFunctions.cginc"
+            #include "../Volume.cginc"
+            #include "../../../krajsy/NoiseFunctions.cginc"
 
             sampler2D _MainTex;
             sampler2D _GrassTintMap;

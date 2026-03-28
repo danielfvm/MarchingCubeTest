@@ -19,8 +19,7 @@ Shader "VRCVolume/SurfaceNets"
     uint _MaxLod;
 
     float _Voxelness;
-
-    #include "MarchingCubeTables.cginc"
+ 
     #include "UnityCG.cginc"
 
     #define ImplSample

@@ -20,7 +20,7 @@ Shader "VRCVolume/Surface"
         #pragma shader_feature _SMOOTH_SHADING_ON
         #pragma target 3.0
 
-        #include "Volume.cginc"
+        #include "../Volume.cginc"
 
         sampler2D _MainTex;
         sampler2D _ColorPalette;
@@ -90,7 +90,7 @@ Shader "VRCVolume/Surface"
             #pragma target 2.0
             
             #include "UnityCG.cginc"
-            #include "Volume.cginc"
+            #include "../Volume.cginc"
 
             struct v2f
             {

@@ -10,6 +10,10 @@ namespace VRCVolumes
         public static ulong GetKey(this VolumeData self) => ((DataList)(object)self)[0].ULong;
         public static RenderTexture GetData(this VolumeData self) => (RenderTexture)((DataList)(object)self)[1].Reference;
         public static RenderTexture GetLOD(this VolumeData self) => (RenderTexture)((DataList)(object)self)[2].Reference;
+        public static bool IsDirty(this VolumeData self) => ((DataList)(object)self)[3].Boolean;
+        public static void MarkDirty(this VolumeData self) {
+            ((DataList)(object)self).SetValue(3, true);
+        }
 
         // Methods
         public static void Destroy(this VolumeData self)
@@ -23,6 +27,7 @@ namespace VRCVolumes
 
         public static void ComputeLODs(this VolumeData self, VolumeAreaManager manager, int levels = -1)
         {
+            /*
             RenderTexture data = self.GetData();
             RenderTexture lod = self.GetLOD();
             
@@ -34,7 +39,7 @@ namespace VRCVolumes
             if (levels == -1)
                 levels = Mathf.RoundToInt(Mathf.Log(data.width, 2));
 
-            
+            */
         }
 
         // Utils

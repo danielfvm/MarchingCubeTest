@@ -7,7 +7,7 @@ namespace VRCVolumes
 {
     [RequireComponent(typeof(VolumeBuilder))]
     [UdonBehaviourSyncMode(BehaviourSyncMode.None)]
-    public class VolumeAreaManager : UdonSharpBehaviour
+    public class VolumeAreaManager : VolumeChunkSyncCallback
     {
         #region Serialized Fields
         [Header("Settings")]
@@ -20,6 +20,7 @@ namespace VRCVolumes
         public int GridSize = 64;
         public bool WaitForBuildQueue;
         public Material volumeMaterial, generateMaterial;
+        public VolumeChunkSync sync;
 
         [Header("References")]
         public BulkInstantiate chunkInstantiate;
@@ -46,7 +47,6 @@ namespace VRCVolumes
         #endregion
 
         #region Utils
-        public Vector2Int TextureDimensionInt => builder.TextureDimensionInt;
         public int TotalTextureDataInBytes => datas.Count * builder.TextureDimensionInt.x * builder.TextureDimensionInt.y * 4 /* RFloat */; 
 
         public Vector3 WorldToGridPos(Vector3 pos) => transform.InverseTransformPoint(pos) * (GridSize - 2);
@@ -174,6 +174,24 @@ namespace VRCVolumes
             copySubPass = copyWeightsMaterial.FindPass("CopySub");
 
             localPlayer = Networking.LocalPlayer;
+
+            sync.Setup(GridSize, builder.TextureDimensionInt);
+        }
+
+        public void Sync()
+        {
+            var gridPos = Vector3Int.zero;
+
+            // Generate the terrain texture as a reference for syncing
+            GenerateChunkData(gridPos, tempChunkData);
+
+            bool status = sync.Serialize(GetDataAt(VolumeChunk.GridToKey(gridPos)), this, tempChunkData);
+            Debug.Log(status);
+        }
+
+        public override void OnChunkSyncData(VolumeData volume, Color[] data)
+        {
+            Debug.Log($"Synced {volume.GetKey()} with len {data.Length}, {data.Length * 4 * 4 / 1024f}kiB");
         }
 
         public void OnDestroy()
@@ -203,6 +221,8 @@ namespace VRCVolumes
 
                 if (Lod)
                     data.ComputeLODs(this);
+
+                data.MarkDirty();
             }
 
             /// Add Chunks to update queue ///

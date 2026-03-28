@@ -47,6 +47,16 @@ uint EncodeZOrder(uint2 coord)
     return index;
 }
 
+float2 DecodeVoxel(uint data)
+{
+    return float2(float(data >> 8) / 0xFFFF, data & 0xFF);
+}
+
+uint EncodeVoxel(float weight, uint color)
+{
+    return uint(saturate(weight) * 0xFFFF) << 8 | color; 
+}
+
 
 #ifdef ImplSample
 
@@ -68,7 +78,7 @@ float2 sample(int3 pos)
     uint data = _DataTex[uv];
     #endif
 
-    return float2(float(data >> 8) / 0xFFFF, data & 0xFF);
+    return DecodeVoxel(data); 
 }
 
 float sampleWeight(float3 pos)
