@@ -7,7 +7,7 @@ namespace VRCVolumes
 {
     [RequireComponent(typeof(VolumeBuilder))]
     [UdonBehaviourSyncMode(BehaviourSyncMode.None)]
-    public class VolumeAreaManager : VolumeChunkSyncCallback
+    public class VolumeAreaManager : VolumeBuilderCallback
     {
         #region Serialized Fields
         [Header("Settings")]
@@ -43,15 +43,19 @@ namespace VRCVolumes
         private DataDictionary buildQueue = new DataDictionary();
 
         private VRCPlayerApi localPlayer;
+        private DataList callbackRegister = new DataList();
 
         #endregion
+
+        public void Register(VolumeAreaManagerCallback callback)
+            => callbackRegister.Add(callback);
 
         #region Utils
         public int TotalTextureDataInBytes => datas.Count * builder.TextureDimensionInt.x * builder.TextureDimensionInt.y * 4 /* RFloat */; 
 
         public Vector3 WorldToGridPos(Vector3 pos) => transform.InverseTransformPoint(pos) * (GridSize - 2);
 
-        private Vector3Int WorldToChunkPos(Vector3 pos)
+        public Vector3Int WorldToChunkPos(Vector3 pos)
         {
             pos = transform.InverseTransformPoint(pos);
 
@@ -79,6 +83,9 @@ namespace VRCVolumes
             if (!Chunked)
                 gameObject.transform.localPosition += Vector3.one / 2f;
 
+            for (int i = 0; i < callbackRegister.Count; i++)
+                ((VolumeAreaManagerCallback)callbackRegister[i].Reference).OnNewChunkLoad(chunk);
+
             return chunk;
         }
 
@@ -95,6 +102,9 @@ namespace VRCVolumes
 
             var data = VolumeData.Create(key, chunk);
             datas.SetValue(key, data.AsDataToken());
+
+            for (int i = 0; i < callbackRegister.Count; i++)
+                ((VolumeAreaManagerCallback)callbackRegister[i].Reference).OnNewDataLoad(data);
 
             return data;
         }
@@ -175,10 +185,10 @@ namespace VRCVolumes
 
             localPlayer = Networking.LocalPlayer;
 
-            sync.Setup(GridSize, builder.TextureDimensionInt);
+            //sync.Setup(GridSize, builder.TextureDimensionInt);
         }
 
-        public void Sync()
+        /*public void Sync()
         {
             var gridPos = Vector3Int.zero;
 
@@ -192,7 +202,7 @@ namespace VRCVolumes
         public override void OnChunkSyncData(VolumeData volume, Color[] data)
         {
             Debug.Log($"Synced {volume.GetKey()} with len {data.Length}, {data.Length * 4 * 4 / 1024f}kiB");
-        }
+        }*/
 
         public void OnDestroy()
         {
@@ -235,6 +245,9 @@ namespace VRCVolumes
                 else                
                     chunk.MarkDirty(); // Mark for later update
             }
+
+            for (int i = 0; i < callbackRegister.Count; i++)
+                ((VolumeAreaManagerCallback)callbackRegister[i].Reference).OnEdit(bounds);
         }
 
         public void LoadChunks(Bounds bounds)
@@ -323,13 +336,16 @@ namespace VRCVolumes
                 VolumeChunk chunk = buildQueue[key].AsVolumeChunk();
 
                 // The added time is to force it to rebuild after 1 / 2 seconds
-                builder.Build(key.ULong, GetChunkData(chunk), chunk.GetMeshFilter().sharedMesh, Collider ? chunk.GetMeshCollider() : null);
+                builder.Build(key.ULong, GetChunkData(chunk), chunk.GetMeshFilter().sharedMesh, Collider ? chunk.GetMeshCollider() : null, this);
                 buildQueue.Remove(key);
             }
 
             Vector3Int chunkPos = WorldToChunkPos(localPlayer.GetPosition() + transform.localScale / 2f);
             if (prevPos != chunkPos && AutoLoadChunks > 0)
             {
+                for (int i = 0; i < callbackRegister.Count; i++)
+                    ((VolumeAreaManagerCallback)callbackRegister[i].Reference).OnAreaChange(chunkPos, prevPos);
+
                 prevPos = chunkPos;
                 int d = AutoLoadChunks - 1;
 
@@ -363,6 +379,18 @@ namespace VRCVolumes
                     // TODO: Optionally disable/enable chunk meshcollider here
                 }
             }
+        }
+
+        public override void OnMeshBuildDone(ulong key, Mesh mesh)
+        {
+            for (int i = 0; i < callbackRegister.Count; i++)
+                ((VolumeAreaManagerCallback)callbackRegister[i].Reference).OnMeshBuildDone(key, mesh);
+        }
+
+        public override void OnColliderBuildDone(ulong key, Mesh mesh)
+        {
+            for (int i = 0; i < callbackRegister.Count; i++)
+                ((VolumeAreaManagerCallback)callbackRegister[i].Reference).OnColliderBuildDone(key, mesh);
         }
 
         #if UNITY_EDITOR && !COMPILER_UDONSHARP

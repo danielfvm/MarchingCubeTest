@@ -32,7 +32,7 @@ public class MyPen : UdonSharpBehaviour
     private void Update()
     {
         i++;
-        if (pressed && i > 3 && Vector3.Distance(prev, transform.position) > 0.01) // This value might need to change depending on use case
+        if (pressed && i > 3 && Vector3.Distance(prev, transform.position) > 0.05) // This value might need to change depending on use case
         {
             i = 0;
 

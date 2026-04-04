@@ -74,7 +74,6 @@ Shader "VRCVolume/SurfaceTextured_PackedMaps"
             float3 normal : NORMAL;
             float2 texcoord;
             float3 worldPos;
-            float3 objectPos;
             float color;
         };
 
@@ -101,12 +100,16 @@ Shader "VRCVolume/SurfaceTextured_PackedMaps"
             uint colorIdx;
             DecodeVertex(v.color, v.vertex.xyz, normal, colorIdx);
 
+            float4 worldPos = mul(unity_ObjectToWorld, v.vertex);
+
+            // This prevents floating point precision errors between chunks causing gaps
+            worldPos.xyz = round(worldPos.xyz * 500.0) / 500.0;
+
             o.color = colorIdx;
             o.texcoord = v.texcoord;
-            o.worldPos = mul(unity_ObjectToWorld, v.vertex).xyz;
             o.normal = UnityObjectToWorldNormal(normal);
-
-            // o.objectPos = mul(unity_ObjectToWorld, float4(0.0,0.0,0.0,1.0) );
+            o.worldPos = worldPos.xyz;
+            v.vertex.xyz = mul(unity_WorldToObject, worldPos);
         }
 
         UNITY_INSTANCING_BUFFER_START(Props)

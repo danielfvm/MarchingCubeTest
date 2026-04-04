@@ -10,6 +10,7 @@ Shader "VoxelMesh/GrassFromArea"
         _WindSwayFrequency ("Wind Sway Frequency", Range(0, 5)) = 1.0
         _WindStrength ("Wind Strength", Range(0, 0.5)) = 0.1
         _MinHeight ("Grass Min Height", Float) = 1
+        _MinYLevel ("Min Y Level", Float) = 0
         _CullDistance ("Grass Cull Distance", Float) = 50
         _SlopeThreshold ("Slope Threshold (Y Dot)", Range(0,1)) = 0.3
         _MaxBladesPerTriangle ("Max Blades Per Triangle", Range(1, 20)) = 6
@@ -18,7 +19,7 @@ Shader "VoxelMesh/GrassFromArea"
 
     SubShader
     {
-        Tags { "RenderType"="Opaque" "Queue"="AlphaTest" }
+        Tags { "RenderType"="Opaque" "Queue"="AlphaTest" "LightMode"="ForwardBase" }
         AlphaToMask On
         Cull off
         LOD 200
@@ -26,12 +27,18 @@ Shader "VoxelMesh/GrassFromArea"
         Pass
         {
             CGPROGRAM
+
+            #pragma multi_compile_fwdbase nolightmap nodirlightmap nodynlightmap novertexlight
             #pragma vertex vert
             #pragma geometry geom
             #pragma fragment frag
             #pragma target 4.0
 
             #include "UnityCG.cginc"
+            #include "UnityLightingCommon.cginc"
+            #include "Lighting.cginc"
+            #include "AutoLight.cginc"
+
             #include "../Volume.cginc"
             #include "../../../krajsy/NoiseFunctions.cginc"
 
@@ -48,6 +55,7 @@ Shader "VoxelMesh/GrassFromArea"
             float _SlopeThreshold;
             float4 _GrassColor;
             int _MaxBladesPerTriangle;
+            float _MinYLevel;
 
             struct appdata
             {
@@ -67,7 +75,10 @@ Shader "VoxelMesh/GrassFromArea"
             {
                 float4 pos : SV_POSITION;
                 float2 uv : TEXCOORD0;
-                float fade : TEXCOORD1;
+                float fade : COLOR2;
+                float4 diff : COLOR0;
+                float3 ambient : COLOR1;
+                SHADOW_COORDS(1) // put shadows data into TEXCOORD2
             };
 
             v2g vert (appdata v)
@@ -118,6 +129,8 @@ Shader "VoxelMesh/GrassFromArea"
                 float dist = distance(triCenter, _WorldSpaceCameraPos);
                 if (dist > _CullDistance) return;
 
+                if (triCenter.y < _MinYLevel) return;
+
                 // Estimate world-space triangle area
                 float area = 0.5 * length(cross(edge1, edge2));
 
@@ -133,6 +146,13 @@ Shader "VoxelMesh/GrassFromArea"
 
                 float3 windDir = normalize(float3(gnoise(triCenter * 0.2) - 0.5, 0, gnoise((triCenter + 1) * 0.2) - 0.5));
                 windDir.y = 0;
+
+                float k = gnoise(triCenter * 2.0 + 1) * 1 - 0.3;
+                _GrassHeight += k * 0.5;
+                _GrassWidth += k * 0.25;
+
+                if (_GrassHeight < 0.3)
+                    return;
 
                 for (int i = 0; i < bladeCount; i++)
                 {
@@ -172,25 +192,55 @@ Shader "VoxelMesh/GrassFromArea"
                     float3 topPos = pos + up * _GrassHeight + windDir * sway;
 
                     // Compute grass quad corners
-                    float3 v0 = pos - right * _GrassWidth;
-                    float3 v1 = pos + right * _GrassWidth;
-                    float3 v2 = topPos + right * _GrassWidth;
-                    float3 v3 = topPos - right * _GrassWidth;
+                    float3 v[4] = {
+                        pos - right * _GrassWidth,
+                        pos + right * _GrassWidth,
+                        topPos + right * _GrassWidth,
+                        topPos - right * _GrassWidth
+                    };
 
                     float fade = saturate((_CullDistance - dist) * 0.5);
+
+                    // the only difference from previous shader:
+                    // in addition to the diffuse lighting from the main light,
+                    // add illumination from ambient or light probes
+                    // ShadeSH9 function from UnityCG.cginc evaluates it,
+                    // using world space normal
+                    float3 n = normalize(topPos - pos);
+                    half nl = abs(dot(n, _WorldSpaceLightPos0.xyz));
+                    float4 diff = nl * _LightColor0;
+                    float3 ambient = ShadeSH9(half4(n,1));
                     
                     // Emit first triangle of quad
-                    g2f o0; o0.fade = fade; o0.uv = float2(0, 0); o0.pos = UnityWorldToClipPos(v0); triStream.Append(o0);
-                    g2f o1; o1.fade = fade; o1.uv = float2(1, 0); o1.pos = UnityWorldToClipPos(v1); triStream.Append(o1);
-                    g2f o2; o2.fade = fade; o2.uv = float2(1, 1); o2.pos = UnityWorldToClipPos(v2); triStream.Append(o2);
-                    
+                    [unroll] for (int i = 0; i < 3; i++)
+                    {
+                        g2f o; 
+                        o.uv = float2(i != 0, i == 2); 
+                        o.fade = fade; 
+                        o.diff = diff; 
+                        o.ambient = ambient; 
+                        o.pos = UnityWorldToClipPos(v[0]); 
+                        TRANSFER_SHADOW(o); 
+                        o.pos = UnityWorldToClipPos(v[i]); 
+                        triStream.Append(o);
+                    }
+
                     triStream.RestartStrip();
                     
                     // Emit second triangle of quad
-                    g2f o3; o3.fade = fade; o3.uv = float2(1, 1); o3.pos = UnityWorldToClipPos(v2); triStream.Append(o3);
-                    g2f o4; o4.fade = fade; o4.uv = float2(0, 1); o4.pos = UnityWorldToClipPos(v3); triStream.Append(o4);
-                    g2f o5; o5.fade = fade; o5.uv = float2(0, 0); o5.pos = UnityWorldToClipPos(v0); triStream.Append(o5);
-                    
+                    [unroll] for (int i = 0; i < 3; i++)
+                    {
+                        g2f o; 
+                        o.uv = float2(i == 0, i != 2); 
+                        o.fade = fade; 
+                        o.diff = diff; 
+                        o.ambient = ambient; 
+                        o.pos = UnityWorldToClipPos(v[0]); 
+                        TRANSFER_SHADOW(o); 
+                        o.pos = UnityWorldToClipPos(v[(i + 2) % 4]); 
+                        triStream.Append(o);
+                    }
+
                     triStream.RestartStrip();
                 }
             }
@@ -202,12 +252,18 @@ Shader "VoxelMesh/GrassFromArea"
 
                 float3 finalColor = _GrassColor.rgb * grayscale;
 
-                return float4(finalColor, tex.a * i.fade * _GrassColor.a);
+                fixed shadow = SHADOW_ATTENUATION(i);
+
+                //return float4(finalColor * (i.diff * 0.95 + 0.05) * shadow, tex.a * i.fade * _GrassColor.a);
+                
+                fixed3 lighting = i.diff * shadow + i.ambient * i.diff;
+
+                return float4(finalColor * (lighting * 0.95 + 0.05), tex.a * i.fade * _GrassColor.a);
             }
 
             ENDCG
         }
     }
 
-    FallBack "Diffuse"
+    //FallBack "Diffuse"
 }

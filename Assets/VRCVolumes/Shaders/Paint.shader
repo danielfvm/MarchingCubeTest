@@ -108,7 +108,7 @@ Shader "VRCVolume/Paint"
                     (voxelIndex / _VoxelDimension.x) / _VoxelDimension.y
                 ) + _ChunkPos * _VoxelDimension;
 
-                float k = 1.0;
+                float k = 3.0;
                 float penWeight = clamp((_SphereRadius - sdCapsule(gridPos, _SphereFrom, _SphereTo)) / k + 0.5, 0, 1.0);
 
                 weight = min(weight, 1.0 - penWeight);

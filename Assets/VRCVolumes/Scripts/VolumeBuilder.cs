@@ -208,7 +208,7 @@ namespace VRCVolumes
         /// <param name="data">Weight (and optionally color) data with an expected size of VolumeBuilder.TextureDimension</param>
         /// <param name="buildCollider">If true will generate a CPU mesh useful for colliders (slower!).</param>
         /// <param name="sharedMesh">Optionally specify what mesh to update, otherwise will use internal one.</param>
-        public void Build(ulong key, Texture data, Mesh sharedMesh = null, MeshCollider collider = null)
+        public void Build(ulong key, Texture data, Mesh sharedMesh = null, MeshCollider collider = null, VolumeBuilderCallback callback = null)
         {
             if (buildingQueue == null)
             {
@@ -244,6 +244,7 @@ namespace VRCVolumes
                     sharedMesh,
                     startTime,
                     key,
+                    callback,
                 }));
 
                 VRCAsyncGPUReadback.Request(texCompactVertices, 0, (IUdonEventReceiver)this);
@@ -284,6 +285,7 @@ namespace VRCVolumes
                     sharedMesh,
                     startTime,
                     key,
+                    callback,
                 }));
 
                 VRCAsyncGPUReadback.Request(texCompactIndices, 0, (IUdonEventReceiver)this);
@@ -302,6 +304,7 @@ namespace VRCVolumes
                     sharedMesh,
                     startTime,
                     key,
+                    callback,
                 }));
 
                 VRCAsyncGPUReadback.Request(texCompactCollider, 0, (IUdonEventReceiver)this);
@@ -312,12 +315,13 @@ namespace VRCVolumes
         {
             if (colliderBuildQueue.Count > 0)
             {
-                var key = colliderBuildQueue.GetKeys()[0];
+                var key = colliderBuildQueue.GetKeys()[0].ULong;
                 var data = (object[])colliderBuildQueue[key].Reference;
                 var collider = (MeshCollider)data[0];
                 var colors = (Color[])data[1];
                 var indices = (int[])data[2];
                 var counter = (int)data[3];
+                var callback = (VolumeBuilderCallback)data[4];
 
                 if (!Utilities.IsValid(collider))
                 {   
@@ -331,6 +335,7 @@ namespace VRCVolumes
                         colors,
                         indices,
                         counter - 1,
+                        callback
                     });
                 }
                 else
@@ -360,6 +365,9 @@ namespace VRCVolumes
                     collider.sharedMesh = null;
                     collider.sharedMesh = meshCollider;
                     collider.enabled = vertices.Length > 0;
+
+                    if (callback != null)
+                        callback.OnColliderBuildDone(key, meshCollider);
                 }
             }
         }
@@ -378,6 +386,7 @@ namespace VRCVolumes
             var collider = (MeshCollider)((object[])buildInfo.Reference)[0];
             var sharedMesh = (Mesh)((object[])buildInfo.Reference)[1];
             var key = (ulong)((object[])buildInfo.Reference)[3];
+            var callback = (VolumeBuilderCallback)((object[])buildInfo.Reference)[4];
             buildingQueue.RemoveAt(0);
 
             // This assumes that vertices and indices have different sized textures, alternative could be to just add it in the buildInfo.
@@ -408,6 +417,7 @@ namespace VRCVolumes
                     colors,
                     mesh.GetIndices(0),
                     5,
+                    callback,
                 });
             }
             else if (isVertexReadback)
@@ -464,6 +474,9 @@ namespace VRCVolumes
                 mesh.SetVertices(vertices, 0, vertices.Length, UnityEngine.Rendering.MeshUpdateFlags.DontRecalculateBounds);
                 mesh.SetColors(colors, 0, colors.Length, UnityEngine.Rendering.MeshUpdateFlags.DontRecalculateBounds);
                 mesh.SetIndices(indices, MeshTopology.Quads, 0, false);
+
+                if (callback != null)
+                    callback.OnMeshBuildDone(key, mesh);
             }
         }
     }

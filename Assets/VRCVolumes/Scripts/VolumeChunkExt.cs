@@ -10,7 +10,7 @@ namespace VRCVolumes
         public static MeshFilter GetMeshFilter(this VolumeChunk self) => (MeshFilter)((DataList)(object)self)[1].Reference;
         public static MeshCollider GetMeshCollider(this VolumeChunk self) => (MeshCollider)((DataList)(object)self)[2].Reference;
 
-        public static MeshRenderer GetMeshRenderer(this VolumeChunk self) => (MeshRenderer)((DataList)(object)self)[2].Reference;
+        public static MeshRenderer GetMeshRenderer(this VolumeChunk self) => (MeshRenderer)((DataList)(object)self)[3].Reference;
 
         public static DataList GetDataRefs(this VolumeChunk self, VolumeAreaManager manager) {
             DataList list = ((DataList)(object)self)[4].DataList;
