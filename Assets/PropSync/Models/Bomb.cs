@@ -10,7 +10,9 @@ public class Bomb : UdonSharpBehaviour
 
     private Vector3 startPos;
     private Bomb next;
-    
+
+    [SerializeField] float fuseTime = 10;
+
     void Start()
     {
         startPos = transform.position;
@@ -28,9 +30,15 @@ public class Bomb : UdonSharpBehaviour
     public override void OnDrop()
     {
         rb.isKinematic = false;
+        SendCustomEventDelayedSeconds(nameof(Explode), fuseTime);
     }
 
     void OnCollisionEnter(Collision collision)
+    {
+        Explode();
+    }
+
+    public void Explode()
     {
         if (!rb.isKinematic)
         {

@@ -866,7 +866,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 536558742064227373, guid: 8d6fdbf2c934d5643a39721e1d3d928a, type: 3}
       propertyPath: m_AnchoredPosition.x
-      value: 100
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 536558742064227373, guid: 8d6fdbf2c934d5643a39721e1d3d928a, type: 3}
       propertyPath: m_AnchoredPosition.y
@@ -974,7 +974,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 8286075112875460171, guid: 8d6fdbf2c934d5643a39721e1d3d928a, type: 3}
       propertyPath: m_AnchoredPosition.x
-      value: 100
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 8286075112875460171, guid: 8d6fdbf2c934d5643a39721e1d3d928a, type: 3}
       propertyPath: m_AnchoredPosition.y
@@ -16112,6 +16112,7 @@ MonoBehaviour:
   _udonSharpBackingUdonBehaviour: {fileID: 9173459415494395746}
   editSyncer: {fileID: 806569915}
   rb: {fileID: 9173459415494395749}
+  fuseTime: 10
 --- !u!114 &9173459415494395748
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -16171,7 +16172,7 @@ Rigidbody:
   m_IsKinematic: 1
   m_Interpolate: 0
   m_Constraints: 0
-  m_CollisionDetection: 0
+  m_CollisionDetection: 1
 --- !u!64 &9173459415494395750
 MeshCollider:
   m_ObjectHideFlags: 0
