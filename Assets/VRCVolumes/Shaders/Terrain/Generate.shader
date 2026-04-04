@@ -131,13 +131,34 @@ Shader "VRCVolume/Generate"
             {
                 // krajsyTerrain(gridPos, weight, color); return;
 
+                float r = gnoise(gridPos);
+                float r2 = gnoise(gridPos * 0.1 + 1);
                 float y = gnoise(gridPos * 0.1);
+
+                y += gnoise(float3(gridPos.x, 0, gridPos.z) * 0.02 + 1) * 10 - 5;
+
                 float k = (gnoise(gridPos * 0.05) * 4.0 + 0.1); // mountain heights
 
                 weight = clamp(y - gridPos.y * 0.1 * k - 2.0, 0, 1);
 
                 //weight = clamp(-gridPos.y / 10.0 + (sin(gridPos.x * 0.1) + sin(gridPos.z * 0.1)) * 0.5 - 2.0, 0, 1);
-                color = gridPos.y < -22 * y - 10 ? 0 : 1;
+                color = 1;
+
+                if (gridPos.y < -13 + y * 10 && r > (gridPos.y - (-15 + y * 10)) / 2.0)
+                    color = 2;
+                if (r2 < 0.2)
+                    color = 0;
+                if (gridPos.y < -15 + y * 10)
+                    color = 2;
+                
+                if (gridPos.y < -20 + y * 10 && r > (gridPos.y - (-25 + y * 10)) / 5.0)
+                    color = 0;
+
+                if (gridPos.y < -25 + y * 10 &&r > (gridPos.y - (-30 + y * 10)) / 5.0)
+                    color = 3;
+                if (gridPos.y < -30 + y * 10)
+                    color = 3;
+
                 //weight = 1.0 - distance(gridPos, 0) * 0.01;
             }
 

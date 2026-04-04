@@ -102,7 +102,7 @@ Shader "VoxelMesh/GrassFromArea"
                 return frac(sin(dot(p, float2(12.9898, 78.233))) * 43758.5453);
             }
 
-            static const int MAX_BLADES = 3;
+            static const int MAX_BLADES = 1;
 
             [maxvertexcount(MAX_BLADES * 6)] // blades max * 6 vertices per quad
             void geom(triangle v2g input[3], inout TriangleStream<g2f> triStream)

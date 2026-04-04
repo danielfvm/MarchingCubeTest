@@ -47,7 +47,7 @@ Shader "VRCVolume/Water"
                 if (depth01 <= 0.0 && all(_Delta == 0))
                     return float4(0, 0, 0, 0);
 
-                if (noise(uv * 0.1) < -0.99)
+                if (noise(uv * 0.1) < -0.98)
                     return float4(1, depth01, 0, 0);
 
                 float n = _PrevTex[uv + int2(1, 0)].x + _PrevTex[uv + int2(0, 1)].x + _PrevTex[uv + int2(-1, 0)].x + _PrevTex[uv + int2(0, -1)].x;

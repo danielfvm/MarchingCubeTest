@@ -14,6 +14,9 @@
     },
     "dev.vrlabs.hierarchyplus": {
       "version": "1.3.2"
+    },
+    "vrchat.jordo.easyquestswitch": {
+      "version": "1.4.0"
     }
   },
   "locked": {
@@ -43,6 +46,10 @@
     },
     "dev.vrlabs.hierarchyplus": {
       "version": "1.3.2",
+      "dependencies": {}
+    },
+    "vrchat.jordo.easyquestswitch": {
+      "version": "1.4.0",
       "dependencies": {}
     }
   }

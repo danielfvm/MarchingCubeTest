@@ -361,6 +361,7 @@ Shader "RED_SIM/Water/Surface Uber Caustics"
 		void surf( Input i , inout SurfaceOutputStandard o )
 		{
 			i.uv_texcoord = i.worldPos.xz * 0.04;
+
 			float mulTime187 = _Time.y * _RipplesSpeed;
 			float2 uv0_Normal = i.uv_texcoord * _Normal_ST.xy + _Normal_ST.zw;
 			float2 panner22 = ( mulTime187 * float2( -0.04,0 ) + uv0_Normal);
@@ -379,6 +380,11 @@ Shader "RED_SIM/Water/Surface Uber Caustics"
 			float3 temp_output_325_0 = BlendNormals( UnpackScaleNormal( tex2D( _Normal2nd, ( panner320 + temp_output_423_0 ) ), _NormalPower2nd ) , UnpackScaleNormal( tex2D( _Normal2nd, ( panner321 + temp_output_423_0 ) ), _NormalPower2nd ) );
 			float3 NormalWater315 = BlendNormals( temp_output_24_0 , temp_output_325_0 );
 			o.Normal = NormalWater315;
+
+			#ifdef SHADER_API_MOBILE
+			o.Albedo = _ColorClose;
+			o.Alpha =  0.9;
+			#else
 			float4 ase_screenPos = float4( i.screenPos.xyz , i.screenPos.w + 0.00000000001 );
 			float4 ase_screenPosNorm = ase_screenPos / ase_screenPos.w;
 			ase_screenPosNorm.z = ( UNITY_NEAR_CLIP_VALUE >= 0 ) ? ase_screenPosNorm.z : ase_screenPosNorm.z * 0.5 + 0.5;
@@ -608,6 +614,7 @@ Shader "RED_SIM/Water/Surface Uber Caustics"
 			o.Smoothness = lerpResult1047 * i.myColor.x;
 			o.Occlusion = IntersectSmoothing1052;
 			o.Alpha =  i.myColor.x;
+			#endif
 		}
 
 		ENDCG
