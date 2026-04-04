@@ -3,6 +3,7 @@ Shader "VRCVolume/Paint"
     CGINCLUDE
 
     #include "UnityCG.cginc"
+    #include "Volume.cginc"
 
     // Uniforms
     Texture2D<uint> _DataTex;
@@ -12,7 +13,7 @@ Shader "VRCVolume/Paint"
 
     struct v2f
     {
-        float4 pos : SV_POSITION;
+        float4 pos : SV_POSITION; 
         float2 uv : TEXCOORD0;
     };
 
@@ -71,12 +72,13 @@ Shader "VRCVolume/Paint"
                 float k = 3.0;
                 float penWeight = clamp((_SphereRadius - sdCapsule(gridPos, _SphereFrom, _SphereTo)) / k + 0.5, 0, 1.0);
 
-                weight = max(weight, penWeight);
+                if (penWeight > 0.25)
+                    weight = max(weight, penWeight);
                 if (penWeight > 0.25)
                     color = _SphereColor;
 
                 // weight: 0 = Air, 1 = Solid
-				return uint(weight * 0xFFFF) << 8 | color;
+				return EncodeVoxel(weight, color);
 			}
 
             ENDCG
@@ -112,7 +114,7 @@ Shader "VRCVolume/Paint"
                 weight = min(weight, 1.0 - penWeight);
 
                 // weight: 0 = Air, 1 = Solid
-				return uint(weight * 0xFFFF) << 8 | color;
+				return EncodeVoxel(weight, color);
 			}
 
             ENDCG
@@ -133,7 +135,7 @@ Shader "VRCVolume/Paint"
                 uint2 uv = uint2(idx % _TargetSize.x, idx / _TargetSize.x);
                 uint data = _DataTex[uv];
 
-                return float(data >> 8) / float(0xFFFF);
+				return DecodeVoxel(_DataTex[uv]).x;
             }
 
 			uint frag (v2f IN) : SV_Target
@@ -150,7 +152,7 @@ Shader "VRCVolume/Paint"
                     voxelIndex % _VoxelDimension.x, 
                     (voxelIndex / _VoxelDimension.x) % _VoxelDimension.y, 
                     (voxelIndex / _VoxelDimension.x) / _VoxelDimension.y
-                ) ;
+                );
 
                 int3 gridPos = localPos + _ChunkPos * _VoxelDimension;
 
@@ -186,7 +188,7 @@ Shader "VRCVolume/Paint"
                 }
 
                 // weight: 0 = Air, 1 = Solid
-				return uint(weight * 0xFFFF) << 8 | color;
+				return EncodeVoxel(weight, color);
 			}
 
             ENDCG

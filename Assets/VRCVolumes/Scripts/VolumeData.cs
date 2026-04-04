@@ -12,6 +12,7 @@ public class VolumeData : UdonSharpBehaviour
             key,
             data,
             new RenderTexture(data),
+            false,
         });
     }
 }

@@ -47,6 +47,7 @@ namespace VRCVolumes
 
             var meshFilter = self.GetComponent<MeshFilter>();
             var meshCollider = self.GetComponent<MeshCollider>();
+            var meshRenderer = self.GetComponent<MeshRenderer>();
 
             meshFilter.mesh = new Mesh();
             meshFilter.mesh.MarkDynamic();
@@ -61,7 +62,9 @@ namespace VRCVolumes
                 key,
                 meshFilter,
                 meshCollider,
+                meshRenderer,
                 new DataList(),
+                false,
                 false,
             });
         }

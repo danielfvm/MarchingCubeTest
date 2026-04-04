@@ -27,7 +27,9 @@ void DecodeVertex(float4 encoded, out float3 position, out float3 normal, out ui
     uint qn_y = d.z & 0x3FF;
     uint qn_z = (d.z >> 10) & 0x3FF;
 
-    position = (float3(qp_x, qp_y, qp_z) / float(0x3FF)) * (64.0 / 62.0) - 0.5; // TODO: Make this flexible!!!!
+    float3 p = (float3(qp_x, qp_y, qp_z)) * 64 / 62  / 0x3FF - 0.5;
+
+    position = p; // TODO: Make this flexible!!!!
     normal   = float3(qn_x, qn_y, qn_z) / float(0x3FF) * 2.0 - 1.0;
     color = uint(encoded.w * float(0xFFFFF) + 0.5);
 }
@@ -45,6 +47,16 @@ uint EncodeZOrder(uint2 coord)
     }
 
     return index;
+}
+
+float2 DecodeVoxel(uint data)
+{
+    return float2(float(data >> 8) / 0xFFFF, data & 0xFF);
+}
+
+uint EncodeVoxel(float weight, uint color)
+{
+    return uint(saturate(weight) * 0xFFFF) << 8 | color; 
 }
 
 
@@ -68,7 +80,7 @@ float2 sample(int3 pos)
     uint data = _DataTex[uv];
     #endif
 
-    return float2(float(data >> 8) / 0xFFFF, data & 0xFF);
+    return DecodeVoxel(data); 
 }
 
 float sampleWeight(float3 pos)
