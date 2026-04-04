@@ -313,9 +313,9 @@ namespace VRCVolumes
                 for (int y = -d; y <= d; y++)
                 for (int z = -d; z <= d; z++)
                 {  
-                    if (debug_limitedChunkHeightGeneration && (y < debug_minChunkHeight || y > debug_maxChunkHeight))
+                    if (debug_limitedChunkHeightGeneration && ((chunkPos.y + y) < debug_minChunkHeight || (chunkPos.y + y) > debug_maxChunkHeight))
                         continue;
-                    
+
                     if (AutoLoadChunksAsSphere)
                     {
                         if ((x*x + y*y + z*z) > d*d)
