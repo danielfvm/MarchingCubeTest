@@ -27,11 +27,11 @@ MonoBehaviour:
     displacement: {fileID: 2800000, guid: e3449d17ff1095a02a1025acac63c888, type: 3}
     roughness: {fileID: 2800000, guid: 87cdc29f1ec44765c996c202265d48b8, type: 3}
   - name: Sand
-    albedo: {fileID: 2800000, guid: 374dd4c16d1d2dbcd8a4b5748ee79b73, type: 3}
-    normal: {fileID: 2800000, guid: 02ad525433fe4281893c4b588b3a6097, type: 3}
-    occlusion: {fileID: 0}
-    displacement: {fileID: 2800000, guid: 2628992157aabfd2196027e040f75224, type: 3}
-    roughness: {fileID: 2800000, guid: 0bf617c9946d92c639715f2f65b814b9, type: 3}
+    albedo: {fileID: 2800000, guid: 2144a2c4f2fc004d2a71b5242ae53162, type: 3}
+    normal: {fileID: 2800000, guid: bb49425a72d134acb85ab9d2cdaf8b80, type: 3}
+    occlusion: {fileID: 2800000, guid: 1b554600880763b228f113e16ad51ce6, type: 3}
+    displacement: {fileID: 2800000, guid: 6a487083e3d4caaee85b4d078b31e8cc, type: 3}
+    roughness: {fileID: 2800000, guid: c3638b98908a0cb578be58ba1fa84246, type: 3}
   - name: Rock
     albedo: {fileID: 2800000, guid: a4e07fb7515020f49bb87b0c1ee431af, type: 3}
     normal: {fileID: 2800000, guid: 933b72feaddf039809551562e6a4a78c, type: 3}

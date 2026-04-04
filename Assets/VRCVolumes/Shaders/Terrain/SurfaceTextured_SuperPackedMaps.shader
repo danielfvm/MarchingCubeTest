@@ -104,10 +104,10 @@ Shader "VRCVolume/SurfaceTextured_SuperPackedMaps"
             // float4 objectPos = IN.objectPos;
 
             // Setup output values
-            fixed4 outColor = 0;
+            fixed3 outAlbedo = 0;
             float3 outNormal = worldNormal;
             half outRoughness = 0;
-            half outOcclusion = 0;
+            half outOcclusion = 1;
 
             // Texture interpolaion value
             //float textureWeight = saturate(IN.color - 0.75 + outNormal.y);
@@ -116,19 +116,24 @@ Shader "VRCVolume/SurfaceTextured_SuperPackedMaps"
             float3 roundedNormal = normalize(round(worldNormal * _NormalRounding) / _NormalRounding);
 
             // Get the sample coordinates just once for all textures
-            float2 sampleUV = (GetTriplanarSampleUV(_AlbedoDisplacementTex_ST.xy, _AlbedoDisplacementTex_ST.zw, worldPos, roundedNormal));
+            float2 sampleUV = frac(GetTriplanarSampleUV(1, 0, worldPos, roundedNormal));
 
-            uint idx0 = 0;//IN.type.x ? 0 : (IN.type.y ? 1 : (IN.type.z ? 2 : 3));
-            uint idx1 = 0;//IN.type.w ? 3 : (IN.type.z ? 2 : (IN.type.y ? 1 : 0));
+            uint idx0 = IN.type.x ? 0 : (IN.type.y ? 1 : (IN.type.z ? 2 : 3));
+            uint idx1 = IN.type.w ? 3 : (IN.type.z ? 2 : (IN.type.y ? 1 : 0));
 
-            float2 scale = float2(4.0, 1.0);
+            float2 scale = float2(_AlbedoDisplacementTex_ST.y / _AlbedoDisplacementTex_ST.x, 1.0);
             fixed4 albedoDisplacement0 = tex2D(_AlbedoDisplacementTex, (sampleUV + idx0) / scale);
             fixed4 normalOcclusionRoughness0 = tex2D(_NormalOcclusionRoughnessTex, (sampleUV + idx0) / scale);
+            float3 normal0 = UnpackNormal(float4(normalOcclusionRoughness0.xy, 1 - length(normalOcclusionRoughness0.xy), 0));
 
             fixed4 albedoDisplacement1 = tex2D(_AlbedoDisplacementTex, (sampleUV + idx1) / scale);
             fixed4 normalOcclusionRoughness1 = tex2D(_NormalOcclusionRoughnessTex, (sampleUV + idx1) / scale);
+            float3 normal1 = UnpackNormal(float4(normalOcclusionRoughness1.xy, 1 - length(normalOcclusionRoughness1.xy), 0));
             
-            outColor = float4(albedoDisplacement0.rgb, 1.0);
+            outAlbedo = lerp(albedoDisplacement0.rgb, albedoDisplacement1.rgb, IN.type[idx1]);
+         //   outNormal = BlendNormals(outNormal, BlendNormals(normal0, normal1));
+            outOcclusion = lerp(normalOcclusionRoughness0.z, normalOcclusionRoughness1.z, IN.type[idx1]);
+            outRoughness = lerp(normalOcclusionRoughness0.w, normalOcclusionRoughness1.w, IN.type[idx1]);
 
             /*
             // Sample the textures
@@ -153,14 +158,14 @@ Shader "VRCVolume/SurfaceTextured_SuperPackedMaps"
 
             // Apply world noise to give slightly more texture on a larger scale
             float simplexNoise = gnoise(worldPos / _WorldNoiseScale) * _WorldNoiseInfluence + (1-_WorldNoiseInfluence);
-            outColor.rgb *= simplexNoise;
+            outAlbedo.rgb *= simplexNoise;
 
             // Debug
             #ifdef DEBUG_DISPLAY_NORMALS_ON
-            outColor.rgb = outNormal;
+            outAlbedo.rgb = outNormal;
             #endif
 
-            o.Albedo = outColor.rgb;
+            o.Albedo = outAlbedo.rgb;
             o.Metallic = _Metallic;
             o.Normal = outNormal;
             o.Smoothness = outRoughness * _Glossiness;
