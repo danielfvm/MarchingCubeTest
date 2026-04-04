@@ -46,7 +46,8 @@ Shader "Unlit/Star"
                 // sample the texture
                 fixed4 col = tex2D(_MainTex, i.uv);
                 col.rgb *= 2;
-                col.a *= 0.5;
+                //col.a *= 0.5;
+                col.a = 1.0;
                 return col;
             }
             ENDCG
