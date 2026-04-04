@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c333ccfdd0cbdbc4ca30cef2dd6e6b9b, type: 3}
   m_Name: JoinLeaveNotifier
   m_EditorClassIdentifier: 
-  serializedUdonProgramAsset: {fileID: 11400000, guid: bd0a7c5e8aee752f680a89d8e411c99f, type: 2}
+  serializedUdonProgramAsset: {fileID: 11400000, guid: f56e7f6946b0f6d499792203be0afd94, type: 2}
   udonAssembly: 
   assemblyError: 
   sourceCsScript: {fileID: 11500000, guid: 213a1ca1c4fc2ca42bed1b517660718f, type: 3}

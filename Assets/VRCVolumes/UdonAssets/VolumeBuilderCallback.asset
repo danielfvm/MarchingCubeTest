@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c333ccfdd0cbdbc4ca30cef2dd6e6b9b, type: 3}
   m_Name: VolumeBuilderCallback
   m_EditorClassIdentifier: 
-  serializedUdonProgramAsset: {fileID: 11400000, guid: bdcdbc767ab002f95b13006d5fb7a079, type: 2}
+  serializedUdonProgramAsset: {fileID: 11400000, guid: 3afa330f3286f964bab9887746c0c85c, type: 2}
   udonAssembly: 
   assemblyError: 
   sourceCsScript: {fileID: 11500000, guid: f402ff29bed33477c9edcdb420063beb, type: 3}

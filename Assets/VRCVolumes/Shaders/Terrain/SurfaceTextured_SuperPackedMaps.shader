@@ -22,8 +22,11 @@ Shader "VRCVolume/SurfaceTextured_SuperPackedMaps"
         _WorldNoiseInfluence ("World Noise Influence", Range(0,1)) = .5
         _NormalRounding ("Normal Rounding", float) = 1
 
+        _MipmapStrength ("Mipmap Strength", float) = 30
+
         [Space(20)]
         [Header(Debug)]
+        _Debug_Float ("Debug Float", Range(0, 2)) = 0
         [Space(5)]
         [Toggle(DEBUG_DISPLAY_NORMALS_ON)] _Debug_DisplayNormals ("Debug Display Normals", int) = 0
     }
@@ -70,8 +73,11 @@ Shader "VRCVolume/SurfaceTextured_SuperPackedMaps"
         float _WorldNoiseInfluence;
         float _NormalRounding;
 
+        float _MipmapStrength;
+
         // Debug
         bool _Debug_DisplayNormals;
+        float _Debug_Float;
 
         void vert (inout appdata_full v, out Input o) 
         {
@@ -102,6 +108,7 @@ Shader "VRCVolume/SurfaceTextured_SuperPackedMaps"
             float3 worldPos = IN.worldPos;
             float3 worldNormal = IN.normal;
             // float4 objectPos = IN.objectPos;
+            float fragmentDistance = distance(worldPos, _WorldSpaceCameraPos);
 
             // Setup output values
             fixed3 outAlbedo = 0;
@@ -118,18 +125,31 @@ Shader "VRCVolume/SurfaceTextured_SuperPackedMaps"
             // Get the sample coordinates just once for all textures
             float2 sampleUV = frac(GetTriplanarSampleUV(1, 0, worldPos, roundedNormal));
 
+            // float2 dx = ddx(sampleUV);
+            // float2 dy = ddy(sampleUV);
+
+            // float rho = max(dot(dx, dx), dot(dy, dy));
+            // float rho = max(length(dx), length(dy));
+            // float mip = log2(rho) * _MipmapStrength;
+
+            float mip = log2(fragmentDistance * _MipmapStrength);
+
             uint idx0 = IN.type.x ? 0 : (IN.type.y ? 1 : (IN.type.z ? 2 : 3));
             uint idx1 = IN.type.w ? 3 : (IN.type.z ? 2 : (IN.type.y ? 1 : 0));
 
             float2 scale = float2(_AlbedoDisplacementTex_ST.y / _AlbedoDisplacementTex_ST.x, 1.0);
-            fixed4 albedoDisplacement0 = tex2D(_AlbedoDisplacementTex, (sampleUV + idx0) / scale);
-            fixed4 normalOcclusionRoughness0 = tex2D(_NormalOcclusionRoughnessTex, (sampleUV + idx0) / scale);
+            // fixed4 albedoDisplacement0 = tex2D(_AlbedoDisplacementTex, (sampleUV + idx0) / scale);
+            // fixed4 normalOcclusionRoughness0 = tex2D(_NormalOcclusionRoughnessTex, (sampleUV + idx0) / scale);
+            fixed4 albedoDisplacement0 = tex2Dlod(_AlbedoDisplacementTex, float4((sampleUV + idx0) / scale, 0, mip));
+            fixed4 normalOcclusionRoughness0 = tex2Dlod(_NormalOcclusionRoughnessTex, float4((sampleUV + idx0) / scale, 0, mip));
             float3 normal0 = UnpackNormal(float4(normalOcclusionRoughness0.xy, 1 - length(normalOcclusionRoughness0.xy), 0));
 
-            fixed4 albedoDisplacement1 = tex2D(_AlbedoDisplacementTex, (sampleUV + idx1) / scale);
-            fixed4 normalOcclusionRoughness1 = tex2D(_NormalOcclusionRoughnessTex, (sampleUV + idx1) / scale);
+            // fixed4 albedoDisplacement1 = tex2D(_AlbedoDisplacementTex, (sampleUV + idx1) / scale);
+            // fixed4 normalOcclusionRoughness1 = tex2D(_NormalOcclusionRoughnessTex, (sampleUV + idx1) / scale);
+            fixed4 albedoDisplacement1 = tex2Dlod(_AlbedoDisplacementTex, float4((sampleUV + idx1) / scale, 0, mip));
+            fixed4 normalOcclusionRoughness1 = tex2Dlod(_NormalOcclusionRoughnessTex, float4((sampleUV + idx1) / scale, 0, mip));
             float3 normal1 = UnpackNormal(float4(normalOcclusionRoughness1.xy, 1 - length(normalOcclusionRoughness1.xy), 0));
-            
+
             outAlbedo = lerp(albedoDisplacement0.rgb, albedoDisplacement1.rgb, IN.type[idx1]);
          //   outNormal = BlendNormals(outNormal, BlendNormals(normal0, normal1));
             outOcclusion = lerp(normalOcclusionRoughness0.z, normalOcclusionRoughness1.z, IN.type[idx1]);

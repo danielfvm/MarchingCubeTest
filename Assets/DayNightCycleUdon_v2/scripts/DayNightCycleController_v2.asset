@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c333ccfdd0cbdbc4ca30cef2dd6e6b9b, type: 3}
   m_Name: DayNightCycleController_v2
   m_EditorClassIdentifier: 
-  serializedUdonProgramAsset: {fileID: 11400000, guid: 37ca3b4127f3f9a968c135a792f9f407, type: 2}
+  serializedUdonProgramAsset: {fileID: 11400000, guid: 21ed08689ddc0de4ca45c047d693b009, type: 2}
   udonAssembly: 
   assemblyError: 
   sourceCsScript: {fileID: 11500000, guid: dc7ae121f60670d47a54d68d09229342, type: 3}

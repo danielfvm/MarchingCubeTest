@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c333ccfdd0cbdbc4ca30cef2dd6e6b9b, type: 3}
   m_Name: Bomb
   m_EditorClassIdentifier: 
-  serializedUdonProgramAsset: {fileID: 11400000, guid: d1a9ef9ddd5d7342e8dc11bbf87e26b8, type: 2}
+  serializedUdonProgramAsset: {fileID: 11400000, guid: 1fd569c38e651664a99ae7cd6b7db126, type: 2}
   udonAssembly: 
   assemblyError: 
   sourceCsScript: {fileID: 11500000, guid: a5259d05371562e2994635ec1530e9f9, type: 3}

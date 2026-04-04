@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c333ccfdd0cbdbc4ca30cef2dd6e6b9b, type: 3}
   m_Name: shadowToggle
   m_EditorClassIdentifier: 
-  serializedUdonProgramAsset: {fileID: 11400000, guid: ecac53cc7ac228cdf8c916979aaa3817, type: 2}
+  serializedUdonProgramAsset: {fileID: 11400000, guid: 2d6d965b75e66244fa361351bd37e331, type: 2}
   udonAssembly: 
   assemblyError: 
   sourceCsScript: {fileID: 11500000, guid: c7c722ffe7051164286891f84631cd2e, type: 3}

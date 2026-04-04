@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c333ccfdd0cbdbc4ca30cef2dd6e6b9b, type: 3}
   m_Name: UpdateNotifier
   m_EditorClassIdentifier: 
-  serializedUdonProgramAsset: {fileID: 11400000, guid: 8c77c1b63fcd0039bbbdc2eb9fb6c952, type: 2}
+  serializedUdonProgramAsset: {fileID: 11400000, guid: 651bb3ab7366fb94895667cedbc15b2e, type: 2}
   udonAssembly: 
   assemblyError: 
   sourceCsScript: {fileID: 11500000, guid: b94ded0a34aef56499e731a292797687, type: 3}
